@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose'; // Changed require to import
 
 const serviceSchema = new mongoose.Schema({
   name: {
@@ -23,4 +23,4 @@ const serviceSchema = new mongoose.Schema({
   }
 });
 
-module.exports = mongoose.model('Service', serviceSchema);
+export default mongoose.model('Service', serviceSchema); // Changed module.exports to export default

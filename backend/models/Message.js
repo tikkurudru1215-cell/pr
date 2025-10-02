@@ -1,5 +1,5 @@
 // backend/models/Message.js
-const mongoose = require('mongoose');
+import mongoose from 'mongoose'; // Changed require to import
 
 const messageSchema = new mongoose.Schema({
   conversationId: {
@@ -22,4 +22,4 @@ const messageSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model('Message', messageSchema);
+export default mongoose.model('Message', messageSchema); // Changed module.exports to export default

@@ -1,5 +1,5 @@
 // backend/models/Conversation.js
-const mongoose = require('mongoose');
+import mongoose from 'mongoose'; // Changed require to import
 
 const conversationSchema = new mongoose.Schema({
   userId: {
@@ -17,4 +17,4 @@ const conversationSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model('Conversation', conversationSchema);
+export default mongoose.model('Conversation', conversationSchema); // Changed module.exports to export default

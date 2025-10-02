@@ -1,12 +1,24 @@
 // backend/seed.js
 
-const mongoose = require('mongoose');
-const Service = require('./models/Service');
-const dotenv = require('dotenv');
-const path = require('path'); // <<< FIX: path मॉड्यूल जोड़ा गया
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import Service from './models/Service.js'; // Clean ESM import
 
-// FIX: dotenv.config को बदला गया ताकि यह हमेशा पैरेंट (रूट) फ़ोल्डर से .env को लोड करे।
-dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+// --- Setup File Paths for ESM ---
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// --- End Setup ---
+
+// Load .env file from the project root folder (../)
+const envPath = path.resolve(__dirname, '..', '.env');
+const envConfig = dotenv.config({ path: envPath });
+
+if (envConfig.error) {
+    console.error(`❌ ERROR: Could not load .env file at ${envPath}`);
+    // Do NOT exit here, to allow for environment variables set elsewhere
+}
 
 const services = [
   {
@@ -25,7 +37,7 @@ const services = [
     name: "Water Problem",
     description: "Lodge water-related issues",
     keywords: ["water", "पानी", "पानी की समस्या"],
-    response: "पानी की समस्या के लिए मैं यहाँ हूं। **बताइए:** नया पानी कनेक्शन चाहिए, पानी नहीं आ रहा, या पाइप लीक हो रहा है? फिर मैं आपकी शिकायत दर्ज करने में मदद करूंगा।"
+    response: "पानी की समस्या के लिए मैं यहाँ हूं। **बताइए:** नया पानी कनेक्शन चाहिए, पानी नहीं आ रहा, या पाइप लीक हो रहा है? फिर मैं आपकी शिकायत दर्ज करने में मदद करूंगा。"
   },
   {
     name: "Medical Help",
@@ -60,9 +72,18 @@ const services = [
 ];
 
 const seedDB = async () => {
+  const MONGO_URI = process.env.MONGO_URI;
+
+  // CRITICAL CHECK: Ensure the URI is loaded
+  if (!MONGO_URI) {
+    console.error('\n❌ FATAL ERROR: MONGO_URI is missing!');
+    console.error('   Please ensure you have a file named ".env" in your project root (one level above the "backend" folder) with the correct "MONGO_URI=..." setting.');
+    process.exit(1);
+  }
+
   try {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log('MongoDB connected for seeding.');
+    await mongoose.connect(MONGO_URI);
+    console.log('✅ MongoDB connected for seeding.');
 
     await Service.deleteMany({});
     console.log('Existing services deleted.');
@@ -73,6 +94,7 @@ const seedDB = async () => {
     mongoose.connection.close();
   } catch (err) {
     console.error('Error seeding the database:', err);
+    process.exit(1); 
   }
 };
 

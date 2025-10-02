@@ -85,7 +85,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
         console.error('Speech recognition error:', event.error);
         setIsListening(false);
         const errorMessage = getErrorMessage(event.error);
-        alert(errorMessage);
+        // Using console error instead of alert for better UX in dev environment
+        console.error(`Voice input error: ${errorMessage}`);
       };
 
       recognitionRef.current.onend = () => {
@@ -158,7 +159,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
 
   const handleVoiceInput = () => {
     if (!voiceSupported) {
-      alert('आपका browser voice recognition support नहीं करता। कृपया Chrome, Firefox या Edge का उपयोग करें।');
+      // Use console.error instead of alert as per instructions
+      console.error('आपका browser voice recognition support नहीं करता। कृपया Chrome, Firefox या Edge का उपयोग करें।');
       return;
     }
 
@@ -172,7 +174,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
       } catch (error) {
         console.error('Error starting voice recognition:', error);
         setIsListening(false);
-        alert('Voice recognition start करने में समस्या है। कृपया microphone की permission check करें।');
+        // Use console.error instead of alert
+        console.error('Voice recognition start करने में समस्या है। कृपया microphone की permission check करें।');
       }
     }
   };
@@ -203,8 +206,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
     setMessages(prev => [...prev, typingMessage]);
 
     try {
+      // Get API_URL from environment variables for backend call
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
       // Make the API call to your new backend endpoint
-      const response = await fetch('http://localhost:5000/api/chat', {
+      const response = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -217,6 +223,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
       });
 
       const data = await response.json();
+      
+      // Handle the error response from the backend server
+      if (response.status !== 200) {
+        throw new Error(data.error || "Backend server returned an error status.");
+      }
+
       setConversationId(data.conversationId);
 
       // Remove typing indicator and add the AI's real response
@@ -244,7 +256,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: 'मैं आपकी मदद नहीं कर पा रहा हूं। कृपया कुछ समय बाद फिर कोशिश करें।',
+        content: `मैं आपकी मदद नहीं कर पा रहा हूं। कृपया कुछ समय बाद फिर कोशिश करें। (Error: ${error instanceof Error ? error.message.substring(0, 50) + '...' : 'Unknown'})`,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -265,7 +277,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        // Added max-h-screen and overflow-y-auto to the outer container
+        // This ensures the whole modal fits within the viewport.
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 max-h-screen overflow-y-auto"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -279,10 +293,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
           onClick={onClose}
         />
 
-        {/* Chat Window */}
+        {/* Chat Window: Adjusted height to be responsive and smaller */}
         <motion.div
-          className={`relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl w-full max-w-4xl transition-all duration-300 ${
-            isMinimized ? 'h-20' : 'h-[700px]'
+          className={`relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl w-full max-w-full sm:max-w-xl md:max-w-2xl flex flex-col transition-all duration-300 ${
+            isMinimized ? 'h-20' : 'h-[90vh] max-h-[800px]' // Set height to 90vh on all screen sizes, capped at 800px
           }`}
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -290,31 +304,33 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
           transition={{ type: "spring", damping: 20, stiffness: 300 }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-white/10">
-            <div className="flex items-center space-x-4">
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10 flex-shrink-0">
+            {/* Left side (Avatar and Status) */}
+            <div className="flex items-center space-x-3 sm:space-x-4">
               <motion.div
-                className="w-16 h-16 bg-gradient-to-r from-primary-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg"
+                className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-primary-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg flex-shrink-0"
                 animate={{ scale: [1, 1.1, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
-                <span className="text-2xl">🤖</span>
+                <span className="text-xl sm:text-2xl">🤖</span>
               </motion.div>
               <div>
-                <h3 className="text-2xl font-bold text-white">Digital Saathi AI</h3>
+                <h3 className="text-lg sm:text-2xl font-bold text-white leading-tight">Digital Saathi AI</h3>
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                  <span className="text-green-400 font-medium">
+                  <span className="text-green-400 font-medium text-xs sm:text-sm">
                     {voiceSupported ? 'Voice Ready 🎤' : 'Text Only 📝'}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center space-x-3">
+            {/* Right side (Controls) */}
+            <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
               {isSpeaking && (
                 <motion.button
                   onClick={stopSpeaking}
-                  className="flex items-center space-x-2 bg-red-500/20 hover:bg-red-500/30 px-4 py-2 rounded-full transition-colors"
+                  className="hidden sm:flex items-center space-x-2 bg-red-500/20 hover:bg-red-500/30 px-3 sm:px-4 py-2 rounded-full transition-colors"
                   animate={{ opacity: [0.7, 1, 0.7] }}
                   transition={{ duration: 1, repeat: Infinity }}
                 >
@@ -322,30 +338,31 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
                   <span className="text-red-400 text-sm">बोल रहा है - रोकें</span>
                 </motion.button>
               )}
-
+              {/* MINIMIZE button visibility fix: increased touch target size */}
               <motion.button
                 onClick={() => setIsMinimized(!isMinimized)}
-                className="p-3 hover:bg-white/10 rounded-full transition-colors"
+                className="p-2 sm:p-3 hover:bg-white/10 rounded-full transition-colors"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
-                <Minimize2 className="w-6 h-6 text-gray-400" />
+                <Minimize2 className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
               </motion.button>
+              {/* CLOSE button visibility fix: increased touch target size */}
               <motion.button
                 onClick={onClose}
-                className="p-3 hover:bg-white/10 rounded-full transition-colors"
+                className="p-2 sm:p-3 hover:bg-white/10 rounded-full transition-colors"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
-                <X className="w-6 h-6 text-gray-400" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
               </motion.button>
             </div>
           </div>
 
           {!isMinimized && (
             <>
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6 max-h-96">
+              {/* Messages: flex-1 for scrolling content area */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
                 {messages.map((message) => (
                   <motion.div
                     key={message.id}
@@ -355,7 +372,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
                     transition={{ duration: 0.3 }}
                   >
                     <div
-                      className={`max-w-lg px-6 py-4 rounded-2xl ${
+                      className={`max-w-xs sm:max-w-lg px-4 sm:px-6 py-3 sm:py-4 rounded-2xl ${ // Adjusted max-width for mobile
                         message.type === 'user'
                           ? 'bg-gradient-to-r from-primary-500 to-purple-600 text-white'
                           : message.id === 'typing'
@@ -363,7 +380,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
                           : 'bg-white/10 text-white border border-white/20'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-1 sm:mb-2">
                         <div className="flex items-center space-x-2">
                           {message.type === 'user' ? (
                             <span className="text-sm font-medium">आप</span>
@@ -384,7 +401,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
                           </button>
                         )}
                       </div>
-                      <p className="text-base leading-relaxed whitespace-pre-line">{message.content}</p>
+                      <p className="text-sm sm:text-base leading-relaxed whitespace-pre-line">{message.content}</p>
                       <p className={`text-xs mt-2 ${
                         message.type === 'user' ? 'text-white/70' : 'text-gray-400'
                       }`}>
@@ -399,8 +416,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Quick Actions */}
-              <div className="px-6 pb-4">
+              {/* Quick Actions and Input are fixed at the bottom (flex-shrink-0) */}
+              <div className="px-4 sm:px-6 pb-4 flex-shrink-0">
                 <p className="text-gray-400 text-sm mb-3">Quick Actions - एक क्लिक में:</p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {quickActions.map((action, index) => (
@@ -417,12 +434,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* Input */}
-              <div className="p-6 pt-0">
-                <div className="flex items-center space-x-4 bg-white/10 border border-white/20 rounded-2xl p-4">
+              {/* Input is fixed at the bottom (flex-shrink-0) */}
+              <div className="p-4 sm:p-6 pt-0 flex-shrink-0">
+                <div className="flex items-center space-x-4 bg-white/10 border border-white/20 rounded-2xl p-3 sm:p-4">
                   <motion.button
                     onClick={handleVoiceInput}
-                    className={`p-4 rounded-full transition-all duration-300 ${
+                    className={`p-3 sm:p-4 rounded-full transition-all duration-300 ${
                       isListening
                         ? 'bg-red-500 animate-pulse shadow-lg'
                         : voiceSupported
@@ -434,9 +451,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
                     disabled={!voiceSupported}
                   >
                     {isListening ? (
-                      <MicOff className="w-6 h-6 text-white" />
+                      <MicOff className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     ) : (
-                      <Mic className="w-6 h-6 text-white" />
+                      <Mic className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     )}
                   </motion.button>
 
@@ -447,17 +464,17 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                     placeholder={voiceSupported ? "यहाँ लिखें या माइक दबाकर बोलें..." : "यहाँ लिखें..."}
-                    className="flex-1 bg-transparent text-white placeholder-gray-400 focus:outline-none text-base"
+                    className="flex-1 bg-transparent text-white placeholder-gray-400 focus:outline-none text-sm sm:text-base"
                   />
 
                   <motion.button
                     onClick={() => handleSendMessage()}
-                    className="p-4 bg-gradient-to-r from-primary-500 to-purple-600 hover:from-primary-600 hover:to-purple-700 rounded-full transition-all duration-300 disabled:opacity-50"
+                    className="p-3 sm:p-4 bg-gradient-to-r from-primary-500 to-purple-600 hover:from-primary-600 hover:to-purple-700 rounded-full transition-all duration-300 disabled:opacity-50"
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     disabled={!inputValue.trim()}
                   >
-                    <Send className="w-6 h-6 text-white" />
+                    <Send className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </motion.button>
                 </div>
 

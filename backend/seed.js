@@ -1,10 +1,10 @@
 // backend/seed.js
 
-import mongoose from 'mongoose';
+import mongoose from 'mongoose'; 
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import Service from './models/Service.js'; // Clean ESM import
+import Service from './models/Service.js'; 
 
 // --- Setup File Paths for ESM ---
 const __filename = fileURLToPath(import.meta.url);
@@ -24,50 +24,58 @@ const services = [
   {
     name: "Government Forms",
     description: "Fill forms with voice guidance",
-    keywords: ["form", "forms", "सरकारी फॉर्म", "फॉर्म भरना"],
+    // NLP Improvement: Added diverse keywords
+    keywords: ["form", "forms", "सरकारी फॉर्म", "फॉर्म भरना", "योजना", "ragistration", "apply", "आवेदन"],
     response: "फॉर्म भरने में मैं expert हूं! **कृपया बताएं कौन सा फॉर्म आपको भरना है?** (उदाहरण: सरकारी योजना का फॉर्म, बैंक का फॉर्म, राशन कार्ड, आधार कार्ड या पासपोर्ट)।"
   },
   {
     name: "Electricity Issue",
     description: "Register & track complaints",
-    keywords: ["electricity", "light", "बिजली", "बिजली की शिकायत"],
+    // NLP Improvement: Added diverse keywords
+    keywords: ["electricity", "light", "बिजली", "बिजली की शिकायत", "पावर कट", "meter problem", "new connection"],
     response: "बिजली की समस्या के लिए मैं आपकी पूरी मदद करूंगा। **कृपया बताएं कि कौन सी समस्या है:** नया बिजली कनेक्शन चाहिए, बिजली बिल की समस्या है, या बिजली नहीं आ रही?"
   },
   {
     name: "Water Problem",
     description: "Lodge water-related issues",
-    keywords: ["water", "पानी", "पानी की समस्या"],
-    response: "पानी की समस्या के लिए मैं यहाँ हूं। **बताइए:** नया पानी कनेक्शन चाहिए, पानी नहीं आ रहा, या पाइप लीक हो रहा है? फिर मैं आपकी शिकायत दर्ज करने में मदद करूंगा。"
+    // NLP Improvement: Added diverse keywords
+    keywords: ["water", "पानी", "पानी की समस्या", "nal", "tanker", "leak", "रिसाव"],
+    response: "पानी की समस्या के लिए मैं यहाँ हूं। **बताइए:** नया पानी कनेक्शन चाहिए, पानी नहीं आ रहा, या पाइप लीक हो रहा है? फिर मैं आपकी शिकायत दर्ज करने में मदद करूंगा।"
   },
   {
     name: "Medical Help",
     description: "Find hospitals & health services",
-    keywords: ["medical", "doctor", "अस्पताल", "दवाई", "डॉक्टर"],
-    response: "स्वास्थ्य सेवा के लिए मैं तुरंत मदद करूंगा। बताइए: नजदीकी अस्पताल, दवाई की दुकान, या डॉक्टर की appointment? **कृपया अपनी location या कौन सी बीमारी है, बताएं।**"
+    // NLP Improvement: Added diverse keywords, links to geospatial tool
+    keywords: ["medical", "doctor", "अस्पताल", "दवाई", "डॉक्टर", "clinic", "health"],
+    response: "स्वास्थ्य सेवा के लिए मैं तुरंत मदद करूंगा। बताइए: नजदीकी अस्पताल, दवाई की दुकान, या डॉक्टर की appointment? **आप 'नजदीकी अस्पताल कहाँ है?' कहकर Geospatial Tool का उपयोग कर सकते हैं।**"
   },
   {
     name: "Farming Support",
     description: "Agriculture guidance & schemes",
-    keywords: ["farming", "किसान", "खेती", "फसल"],
-    response: "किसान भाई, खेती-बाड़ी की हर समस्या का समाधान यहाँ है: बीज और खाद की जानकारी, सरकारी योजनाएं, फसल बीमा, मंडी के भाव, या मौसम की जानकारी। **आपकी आवश्यकता क्या है?**"
+    // NLP Improvement: Added diverse keywords, links to agriculture tool
+    keywords: ["farming", "किसान", "खेती", "फसल", "बीमा", "मंडी", "मौसम", "agriculture"],
+    response: "किसान भाई, खेती-बाड़ी की हर समस्या का समाधान यहाँ है: बीज और खाद की जानकारी, सरकारी योजनाएं, फसल बीमा, मंडी के भाव, या मौसम की जानकारी। **आप 'गेहूं का मंडी भाव क्या है?' कहकर Agriculture Tool का उपयोग कर सकते हैं।**"
   },
   {
     name: "Education Help",
     description: "Course info & form assistance",
-    keywords: ["education", "पढ़ाई", "स्कूल", "college"],
+    // NLP Improvement: Added diverse keywords
+    keywords: ["education", "पढ़ाई", "स्कूल", "college", "scholarship", "छात्रवृत्ति", "admisssion"],
     response: "पढ़ाई और शिक्षा संबंधित सहायता के लिए मैं यहाँ हूं। बताइए: **किस कोर्स के बारे में जानकारी चाहिए, एडमिशन फॉर्म भरना है, या छात्रवृत्ति योजनाएं?**"
   },
   {
     name: "Technical Support",
     description: "Phone, app & website help",
-    keywords: ["technical", "support", "तकनीकी"],
+    // NLP Improvement: Added diverse keywords
+    keywords: ["technical", "support", "तकनीकी", "app", "website", "phone", "website", "server"],
     response: "मैं तकनीकी सहायता के लिए तैयार हूं। **बताइए, क्या समस्या है?** फोन, ऐप, या वेबसाइट से संबंधित?"
   },
   {
     name: "Emergency Help",
     description: "Urgent assistance & contacts",
-    keywords: ["emergency", "help", "आपातकालीन", "मदद"],
-    response: "आपातकालीन मदद के लिए मैं यहाँ हूँ। मैं आपके लिए नजदीकी पुलिस स्टेशन या अस्पताल का पता और फोन नंबर ढूंढ सकता हूँ। **कृपया बताएं कि क्या हुआ है?**"
+    // NLP Improvement: Added diverse keywords, links to geospatial tool
+    keywords: ["emergency", "help", "आपातकालीन", "मदद", "police", "fire", "ambulance"],
+    response: "आपातकालीन मदद के लिए मैं यहाँ हूँ। मैं आपके लिए नजदीकी पुलिस स्टेशन या अस्पताल का पता और फोन नंबर ढूंढ सकता हूँ। **आप 'नजदीकी पुलिस स्टेशन कहाँ है?' कहकर Geospatial Tool का उपयोग कर सकते हैं।**"
   }
 ];
 
@@ -94,6 +102,7 @@ const seedDB = async () => {
     mongoose.connection.close();
   } catch (err) {
     console.error('Error seeding the database:', err);
+    mongoose.connection.close(); // Ensure connection is closed on error
     process.exit(1); 
   }
 };

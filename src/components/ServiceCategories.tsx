@@ -1,16 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import axios from "axios";
 
 import {
   AlertCircle,
   FileText,
   Lightbulb,
   Droplet,
-  
   Leaf,
   GraduationCap,
+  Heart, // Added to cover medical help
+  Headset, // Added to cover technical support or emergency help
 } from "lucide-react";
 
 // Service type
@@ -22,38 +22,21 @@ interface Service {
 
 interface ServiceCategoriesProps {
   onAIToggle: () => void;
+  services: Service[];
+  loading: boolean;
+  error: string;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
-
-const ServiceCategories: React.FC<ServiceCategoriesProps> = ({ onAIToggle }) => {
+const ServiceCategories: React.FC<ServiceCategoriesProps> = ({
+  onAIToggle,
+  services,
+  loading,
+  error,
+}) => {
   const { ref, inView } = useInView({
     triggerOnce: true,
     threshold: 0.1,
   });
-
-  const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const res = await axios.get<Service[]>(`${API_URL}/api/services`);
-        setServices(res.data);
-        setError("");
-      } catch (err: unknown) {
-        console.error("Error fetching services:", err);
-        setError(
-          "Failed to load services. Please check if the backend is running correctly."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchServices();
-  }, []);
 
   const getIcon = (serviceName: string) => {
     switch (serviceName.toLowerCase()) {
@@ -63,11 +46,15 @@ const ServiceCategories: React.FC<ServiceCategoriesProps> = ({ onAIToggle }) => 
         return <Lightbulb className="w-8 h-8 text-white" />;
       case "water problem":
         return <Droplet className="w-8 h-8 text-white" />;
-      
+      case "medical help":
+        return <Heart className="w-8 h-8 text-white" />;
       case "farming support":
         return <Leaf className="w-8 h-8 text-white" />;
       case "education help":
         return <GraduationCap className="w-8 h-8 text-white" />;
+      case "technical support":
+      case "emergency help":
+        return <Headset className="w-8 h-8 text-white" />;
       default:
         return <AlertCircle className="w-8 h-8 text-white" />;
     }
@@ -88,9 +75,15 @@ const ServiceCategories: React.FC<ServiceCategoriesProps> = ({ onAIToggle }) => 
 
   if (loading) {
     return (
-      <section id="services" className="py-20 px-4 text-center">
+      <section id="services" className="py-20 px-4 text-center min-h-[400px] flex items-center justify-center">
         <div className="container mx-auto">
-          <p className="text-xl text-white">Loading services...</p>
+          <motion.p
+            className="text-xl text-primary-400"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+          >
+            Loading services...
+          </motion.p>
         </div>
       </section>
     );
@@ -120,7 +113,12 @@ const ServiceCategories: React.FC<ServiceCategoriesProps> = ({ onAIToggle }) => 
 
         {/* Error */}
         {error && (
-          <div className="text-center text-red-400 my-8">{error}</div>
+          <div className="text-center text-red-400 my-8 text-lg font-medium border border-red-500/30 p-4 rounded-xl">
+            ⚠️ Connection Error: {error}
+            <p className="mt-2 text-sm text-gray-400">
+                Please make sure your backend server is running on {import.meta.env.VITE_API_URL || "http://localhost:5000"} and accepting requests.
+            </p>
+          </div>
         )}
 
         {/* Services Grid */}
@@ -148,7 +146,7 @@ const ServiceCategories: React.FC<ServiceCategoriesProps> = ({ onAIToggle }) => 
 
                 <div className="relative z-10 text-center">
                   <div className="flex items-center justify-center mb-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300">
                       {getIcon(service.name)}
                     </div>
                   </div>
@@ -170,7 +168,8 @@ const ServiceCategories: React.FC<ServiceCategoriesProps> = ({ onAIToggle }) => 
           </motion.div>
         ) : (
           <div className="text-center text-gray-400">
-            No services available. Please check the backend connection and data.
+            {/* Display this only if not loading and no error, which implies no data */}
+            {!loading && !error && "No services available. Please check the backend's database seed."}
           </div>
         )}
 

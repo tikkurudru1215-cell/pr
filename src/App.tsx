@@ -20,6 +20,7 @@ function App() {
   const [isAIOpen, setIsAIOpen] = useState(false);
   const [currentSection, setCurrentSection] = useState('home');
   const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -51,7 +52,9 @@ function App() {
         setError('');
       } catch (error) {
         console.error('Failed to fetch services:', error);
-        setError('Failed to load services. Please try again later.');
+        setError('Failed to load services. Please ensure the backend is running and try again.');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -69,36 +72,15 @@ function App() {
 
       <main className="relative z-10">
         <HeroSection onAIToggle={() => setIsAIOpen(true)} />
-        <ServiceCategories onAIToggle={() => setIsAIOpen(true)} />
+        <ServiceCategories
+          services={services}
+          loading={loading}
+          error={error}
+          onAIToggle={() => setIsAIOpen(true)}
+        />
         <HowItWorks onAIToggle={() => setIsAIOpen(true)} />
 
-        {/* Services List Section */}
-        <section
-          id="services"
-          className="p-6 bg-gray-800 rounded mt-10 max-w-3xl mx-auto"
-        >
-          <h2 className="text-2xl font-semibold mb-4">Available Services</h2>
-
-          {error && (
-            <p className="text-red-400 mb-4">{error}</p>
-          )}
-
-          {services.length === 0 && !error ? (
-            <p>No services found.</p>
-          ) : (
-            <ul>
-              {services.map((service) => (
-                <li
-                  key={service._id}
-                  className="mb-3 border-b border-gray-600 pb-2"
-                >
-                  <h3 className="text-lg font-bold">{service.name}</h3>
-                  <p>{service.description}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        {/* Removed redundant Services List Section from App.tsx */}
       </main>
 
       <AIAssistant isOpen={isAIOpen} onClose={() => setIsAIOpen(false)} />

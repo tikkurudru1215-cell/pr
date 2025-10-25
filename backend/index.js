@@ -7,9 +7,8 @@ import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import mongoose from "mongoose";
-import axios from "axios"; // NEW IMPORT: Required for direct API calls
-
-// Removed: import { GoogleGenerativeAI } from "@google/generative-ai";
+import axios from "axios"; 
+import { compareTwoStrings } from 'string-similarity'; 
 
 import { complainService, complainServiceToolDefinition } from "./ai/tools/complain-service.js"; 
 import { getNearbyService, getNearbyServiceToolDefinition } from "./ai/tools/geospatial-service.js"; 
@@ -19,7 +18,6 @@ import { getSchemeAndEducationData, getSchemeAndEducationDataToolDefinition } fr
 import Service from "./models/Service.js";
 import Conversation from "./models/Conversation.js";
 import Message from "./models/Message.js";
-import { compareTwoStrings } from 'string-similarity';
 
 // --- Setup File Paths and .env ---
 const __filename = fileURLToPath(import.meta.url);
@@ -48,7 +46,7 @@ mongoose.connect(MONGO_URI)
 // --- OpenRouter AI Setup ---
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY; 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const AI_MODEL = "openai/gpt-4o-mini"; // Excellent, fast model supporting tools
+const AI_MODEL = "openai/gpt-4o-mini"; 
 
 console.log("Loaded AI_API_KEY:", OPENROUTER_API_KEY ? "✅ Found" : "❌ Missing");
 
@@ -78,23 +76,15 @@ async function callOpenRouterAPI(messages, toolDefinitions) {
         throw new Error("OpenRouter API Key is missing.");
     }
     
-    // Convert Mongoose history roles to OpenRouter/OpenAI format
+    // FIX: Simplified the message mapping logic in the handler. Messages array is now pre-formatted before being passed here.
     const openRouterMessages = messages.map(msg => {
-        // Handle tool responses from previous steps
-        if (msg.role === 'tool') {
-             // Extract function response data from the original structure
-             const functionResponse = msg.parts[0].functionResponse;
-             return {
-                 role: 'tool',
-                 tool_call_id: functionResponse.call_id, // tool_call_id must be sent back
-                 content: JSON.stringify(functionResponse.response),
-             };
+        if (msg.role === 'ai') {
+            return { role: 'assistant', content: msg.content };
+        } else if (msg.role === 'tool') {
+            // Tool messages are expected to be in the final API format { role: 'tool', tool_call_id: '...', content: '...' }
+            return msg;
         }
-        // Handle user and model messages
-        return {
-            role: msg.role === 'ai' ? 'assistant' : msg.role,
-            content: msg.content,
-        };
+        return msg; // user role
     });
 
     const body = {
@@ -124,13 +114,45 @@ Maintain a helpful, encouraging, and authoritative tone.`;
     const headers = {
         'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'digital-saathi-ai.app', // Required by OpenRouter for attribution
+        'HTTP-Referer': 'digital-saathi-ai.app', 
         'X-Title': 'Digital Saathi AI', 
     };
 
-    const response = await axios.post(OPENROUTER_URL, body, { headers });
+    // Added 25-second timeout for stability
+    const response = await axios.post(OPENROUTER_URL, body, { 
+        headers,
+        timeout: 25000, 
+    });
     return response.data;
 }
+
+// --- NEW: Google Search Handler for General Queries ---
+/**
+ * Performs a Google Search and returns a formatted snippet of the top result.
+ * This acts as the "Real Search Tool" fallback.
+ * @param {string} query The user's message to search for.
+ * @returns {Promise<string>} A formatted string with the search snippet, or an empty string.
+ */
+async function performGoogleSearch(query) {
+    // The Google Search tool is available in this environment
+    try {
+        const searchResults = await google.search({ queries: [query] });
+        
+        if (searchResults.results && searchResults.results.length > 0) {
+            const topResult = searchResults.results[0];
+            let snippet = topResult.snippet || topResult.title;
+
+            // Append the search result to the AI's response for contextually new/fresh information
+            return `\n\n🔎 **Real-time Search Result**: ${snippet} (Source: ${topResult.source_title || topResult.source})`;
+        }
+        return "";
+    } catch (error) {
+        // Log the error but don't fail the entire request
+        console.error("❌ Google Search Fallback failed:", error);
+        return "";
+    }
+}
+
 
 // --- Main Logic: Chat Endpoint (/api/chat) ---
 app.post("/api/chat", async (req, res) => {
@@ -144,7 +166,6 @@ app.post("/api/chat", async (req, res) => {
         // 1. Service Matching Logic (Canned Responses - Fast NLP Filter)
         const services = await Service.find({}).lean();
         let cannedResponse = null;
-        // CORRECTED: Increased threshold from 0.4 to 0.7 for higher confidence matching
         const THRESHOLD = 0.7; 
 
         for (const service of services) {
@@ -190,29 +211,38 @@ app.post("/api/chat", async (req, res) => {
             .select('role content')
             .lean();
 
-        // Prepare messages array for API call
-        // The OpenRouter API call handler expects objects with { role, content } for user/model and special tool objects.
-        let messages = history.map(msg => ({ 
-             role: msg.role === 'ai' ? 'assistant' : msg.role, 
-             content: msg.content
-        }));
+        // CRITICAL FIX LOCATION 1: Convert MongoDB history messages to OpenRouter API format
+        let messages = history.map(msg => {
+             if (msg.role === 'tool') {
+                 // msg.content is the stringified JSON object of the DB result
+                 const dbResult = JSON.parse(msg.content); 
+                 return {
+                     role: 'tool',
+                     tool_call_id: dbResult.tool_call_id,
+                     content: dbResult.response_content,
+                 };
+             }
+             return { role: msg.role === 'ai' ? 'assistant' : msg.role, content: msg.content };
+        });
         
+        // Add current user message
         messages.push({ role: 'user', content: userMessage });
 
         let response = await callOpenRouterAPI(messages, toolDefinitions);
         
         let aiResponse = response.choices[0].message.content;
         let toolCalls = response.choices[0].message.tool_calls;
+        let finalAIResponse = aiResponse;
+        let searchAppend = "";
         
-        // Step 1: Check for function calls (Tool Execution)
+        // Step 2a: Check for function calls (Tool Execution)
         if (toolCalls && toolCalls.length > 0) {
-            const toolResults = [];
             
-            // Add the model's message requesting tool execution to history for the next call
+            // Add the model's message requesting tool execution to messages array for the next call
             messages.push({
                 role: 'assistant',
                 tool_calls: toolCalls,
-                content: aiResponse || null // Content can be null when tool is called
+                content: aiResponse || null 
             });
             
             for (const call of toolCalls) {
@@ -221,39 +251,63 @@ app.post("/api/chat", async (req, res) => {
                     throw new Error(`Unknown function call: ${call.function.name}`);
                 }
                 
-                // Parse the arguments string to a JSON object
                 const args = JSON.parse(call.function.arguments);
                 const result = await func(args, { Service }); 
+                
+                // CRITICAL FIX: The content sent back to the model MUST be the stringified JSON object of the tool result.
+                const toolContentString = JSON.stringify(result); 
 
-                toolResults.push({
-                    tool_call_id: call.id, // Pass back the ID from the model
-                    output: result,
+                // Prepare DB save object
+                const dbToolResult = {
+                     tool_call_id: call.id,
+                     response_content: toolContentString, // Store the final content string (JSON.stringify(result))
+                };
+
+                // Save tool call/result to history immediately
+                await Message.create({ 
+                    conversationId: currentConversationId, 
+                    role: 'tool', 
+                    content: JSON.stringify(dbToolResult), 
+                });
+
+                // CRITICAL FIX LOCATION 2: Prepare the EPHEMERAL message for the second API call
+                messages.push({
+                    role: 'tool',
+                    tool_call_id: call.id, 
+                    content: toolContentString, 
                 });
             }
 
-            // Send tool results back to the model for final response generation
-            toolResults.forEach(tr => {
-                messages.push({
-                    role: 'tool',
-                    tool_call_id: tr.tool_call_id,
-                    content: JSON.stringify(tr.output),
-                });
-            });
-
             // Call OpenRouter again with tool results appended
             response = await callOpenRouterAPI(messages, toolDefinitions);
-            aiResponse = response.choices[0].message.content;
+            finalAIResponse = response.choices[0].message.content;
+            
+        } else if (aiResponse?.length > 0) {
+            // Step 2b: No tool call, LLM provided a direct answer. Augment with search if it's a general query.
+            
+            const isToolQuery = Object.values(toolDefinitions).some(def => 
+                userMessage.toLowerCase().includes(def.function.name.toLowerCase()) || 
+                userMessage.toLowerCase().includes(def.function.description.toLowerCase())
+            );
+
+            // If the LLM gives a direct answer and it wasn't a tool/service query, use search fallback.
+            const isGeneralQuery = !isToolQuery; 
+            
+            if (isGeneralQuery) {
+                searchAppend = await performGoogleSearch(userMessage);
+                finalAIResponse = aiResponse + searchAppend;
+            } else {
+                finalAIResponse = aiResponse;
+            }
         }
-
-
+        
         // 3. Save new messages
         await Message.insertMany([
             { conversationId: currentConversationId, role: 'user', content: userMessage },
-            // Save the final AI response (text content)
-            { conversationId: currentConversationId, role: 'ai', content: aiResponse },
+            { conversationId: currentConversationId, role: 'ai', content: finalAIResponse },
         ]);
 
-        res.json({ aiResponse: aiResponse, conversationId: currentConversationId });
+        res.json({ aiResponse: finalAIResponse, conversationId: currentConversationId });
 
     } catch (err) {
         // Error Handling
@@ -272,6 +326,19 @@ app.post("/api/chat", async (req, res) => {
             } else {
                  customMessage = `OpenRouter से कनेक्ट करने में HTTP त्रुटि (${statusCode})।`;
             }
+        }
+        // Handle timeout error
+        else if (axios.isAxiosError(err) && err.code === 'ECONNABORTED') {
+             customMessage = "क्षमा करें, AI मॉडल से जवाब आने में बहुत देर हो गई।";
+             statusCode = 504; 
+        }
+        // Specific tool execution error handling (Includes the error the user is seeing)
+        // If the error message is related to property reading, it means a structural error.
+        else if (err.message.includes("Cannot read properties of undefined") || 
+                 err.message.includes("tool_call_id") || 
+                 err.message.includes("functionResponse")) {
+             customMessage = "क्षमा करें, टूल के आउटपुट को संसाधित (process) करने में एक आंतरिक त्रुटि हुई।";
+             statusCode = 500;
         }
         else if (err.message.includes('MongooseError') || err.message.includes('connect')) {
             customMessage = "डेटाबेस कनेक्शन में समस्या है। कृपया सुनिश्चित करें कि MongoDB चल रहा है।";
@@ -294,7 +361,8 @@ app.get('/api/services', async (req, res) => {
         console.error('❌ Error fetching services:', error.message);
         res.status(500).json({ message: 'Failed to load services. Check backend connectivity and seed data.' });
     }
-});
+}
+);
 
 
 app.listen(PORT, () => {

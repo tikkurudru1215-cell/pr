@@ -7,8 +7,8 @@ import {
   Volume2, 
   Minimize2, 
   MicOff, 
-  ChevronUp, // ADDED
-  ChevronDown // ADDED
+  ChevronUp, 
+  ChevronDown 
 } from 'lucide-react';
 
 interface AIAssistantProps {
@@ -275,24 +275,23 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  // src/components/AIAssistant.tsx
-
-// ... (existing code)
-
+// START of Quick Actions Change
+// Updated Quick Actions list as requested
   const quickActions = [
-    // Grievance Tool-based
+    // Grievance Tool-based (Kept)
     '💡 बिजली की शिकायत करनी है',
-    // Geospatial Tool-based
-    '🏥 नजदीकी अस्पताल कहाँ है',
-    // Agriculture Tool-based
-    '🚜 गेहूं का मंडी भाव क्या है',
-    // Canned Response/Form-based
-    '🏛️ सरकारी फॉर्म भरना है',
+    // Education Help (Kept)
     '📚 छात्रवृत्ति की जानकारी',
-    '💧 पानी की समस्या है',
+    // Technical Support (Kept)
+    '🖥️ मेरा ऐप काम नहीं कर रहा है',
+    // Emergency/Geospatial (Kept)
+    '🚨 नजदीकी पुलिस कहाँ है',
+    // NEW: Water Problem (Maps to 'Water Problem' service and complainService)
+    '💦 पानी नहीं आ रहा है', 
+    // NEW: Scheme Lookup (Maps to 'getSchemeAndEducationData' tool)
+    '🏘️ पीएम आवास योजना की जानकारी', 
   ];
-
-// ... (rest of the file remains the same)
+// END of Quick Actions Change
 
   if (!isOpen) return null;
 

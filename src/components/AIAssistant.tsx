@@ -33,8 +33,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   
-  // NEW STATE: To control visibility of the quick actions
-  const [isQuickActionsVisible, setIsQuickActionsVisible] = useState(true);
+  // Set to false by default to maximize chat height.
+  const [isQuickActionsVisible, setIsQuickActionsVisible] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -298,9 +298,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
   return (
     <AnimatePresence>
       <motion.div
-        // Added max-h-screen and overflow-y-auto to the outer container
-        // This ensures the whole modal fits within the viewport.
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 max-h-screen overflow-y-auto"
+        // Changed p-4 to p-0 on mobile for edge-to-edge look, p-8 on desktop
+        className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-8 max-h-screen overflow-y-auto"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -314,32 +313,32 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
           onClick={onClose}
         />
 
-        {/* Chat Window: Adjusted height to be responsive and smaller */}
+        {/* Chat Window: Max width and height kept large for better chat visibility */}
         <motion.div
-          className={`relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl w-full max-w-full sm:max-w-xl md:max-w-2xl flex flex-col transition-all duration-300 ${
-            isMinimized ? 'h-20' : 'h-[90vh] max-h-[800px]' // Set height to 90vh on all screen sizes, capped at 800px
+          className={`relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-none sm:rounded-3xl shadow-2xl w-full max-w-full lg:max-w-4xl xl:max-w-5xl flex flex-col transition-all duration-300 ${
+            isMinimized ? 'h-20' : 'h-full sm:h-[90vh] max-h-[900px]' // Increased max height and made it full height on mobile
           }`}
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.8, opacity: 0 }}
           transition={{ type: "spring", damping: 20, stiffness: 300 }}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10 flex-shrink-0">
+          {/* Header (Top part) - REDUCED PADDING for minimum height */}
+          <div className="flex items-center justify-between p-3 sm:p-4 border-b border-white/10 flex-shrink-0">
             {/* Left side (Avatar and Status) */}
             <div className="flex items-center space-x-3 sm:space-x-4">
               <motion.div
-                className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-primary-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg flex-shrink-0"
+                className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-primary-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg flex-shrink-0"
                 animate={{ scale: [1, 1.1, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
-                <span className="text-xl sm:text-2xl">🤖</span>
+                <span className="text-xl sm:text-lg">🤖</span>
               </motion.div>
               <div>
-                <h3 className="text-lg sm:text-2xl font-bold text-white leading-tight">Digital Saathi AI</h3>
+                <h3 className="text-lg sm:text-xl font-bold text-white leading-tight">Digital Saathi AI</h3>
                 <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                  <span className="text-green-400 font-medium text-xs sm:text-sm">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <span className="text-green-400 font-medium text-xs">
                     {voiceSupported ? 'Voice Ready 🎤' : 'Text Only 📝'}
                   </span>
                 </div>
@@ -351,7 +350,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
               {isSpeaking && (
                 <motion.button
                   onClick={stopSpeaking}
-                  className="hidden sm:flex items-center space-x-2 bg-red-500/20 hover:bg-red-500/30 px-3 sm:px-4 py-2 rounded-full transition-colors"
+                  className="hidden sm:flex items-center space-x-2 bg-red-500/20 hover:bg-red-500/30 px-3 sm:px-4 py-1 rounded-full transition-colors"
                   animate={{ opacity: [0.7, 1, 0.7] }}
                   transition={{ duration: 1, repeat: Infinity }}
                 >
@@ -359,30 +358,30 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
                   <span className="text-red-400 text-sm">बोल रहा है - रोकें</span>
                 </motion.button>
               )}
-              {/* MINIMIZE button visibility fix: increased touch target size */}
+              {/* MINIMIZE button */}
               <motion.button
                 onClick={() => setIsMinimized(!isMinimized)}
-                className="p-2 sm:p-3 hover:bg-white/10 rounded-full transition-colors"
+                className="p-2 sm:p-2 hover:bg-white/10 rounded-full transition-colors"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
-                <Minimize2 className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
+                <Minimize2 className="w-5 h-5 sm:w-5 sm:h-5 text-gray-400" />
               </motion.button>
-              {/* CLOSE button visibility fix: increased touch target size */}
+              {/* CLOSE button (across sign) */}
               <motion.button
                 onClick={onClose}
-                className="p-2 sm:p-3 hover:bg-white/10 rounded-full transition-colors"
+                className="p-2 sm:p-2 hover:bg-white/10 rounded-full transition-colors"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
-                <X className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
+                <X className="w-5 h-5 sm:w-5 sm:h-5 text-gray-400" />
               </motion.button>
             </div>
           </div>
 
           {!isMinimized && (
             <>
-              {/* Messages: flex-1 for scrolling content area */}
+              {/* Messages (The big text chat area) - flex-1 maximizes height here */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
                 {messages.map((message) => (
                   <motion.div
@@ -437,8 +436,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Quick Actions and Input are fixed at the bottom (flex-shrink-0) */}
-              <div className="px-4 sm:px-6 flex-shrink-0 border-t border-white/10 pt-4">
+              {/* Quick Actions (The minimized bottom section) */}
+              <div className="px-4 sm:px-6 flex-shrink-0 border-t border-white/10 pt-2"> {/* pt-2 reduces top padding */}
                 {/* Quick Actions Header and Toggle */}
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-gray-400 text-sm font-medium">Quick Actions - एक क्लिक में:</p>
@@ -457,7 +456,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
                   </motion.button>
                 </div>
 
-                {/* Quick Actions Grid (Collapsible) */}
+                {/* Quick Actions Grid (Collapsed by Default, maximizing chat area) */}
                 <AnimatePresence initial={false}>
                   {isQuickActionsVisible && (
                     <motion.div
@@ -487,8 +486,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
               </div>
 
 
-              {/* Input is fixed at the bottom (flex-shrink-0) */}
-              <div className="p-4 sm:p-6 pt-0 flex-shrink-0">
+              {/* Input (Fixed size at the bottom) - REDUCED VERTICAL PADDING */}
+              <div className="px-4 sm:px-6 py-2 pt-0 flex-shrink-0">
                 <div className="flex items-center space-x-4 bg-white/10 border border-white/20 rounded-2xl p-3 sm:p-4">
                   <motion.button
                     onClick={handleVoiceInput}

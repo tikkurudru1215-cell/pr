@@ -70,61 +70,81 @@ const toolDefinitions = [
 }));
 
 
-// --- OpenRouter API Call Handler (Replaces SDK Logic) ---
+// --- OpenRouter API Call Handler (Finalized for Guaranteed Language Detection) ---
 async function callOpenRouterAPI(messages, toolDefinitions) {
     if (!OPENROUTER_API_KEY) {
         throw new Error("OpenRouter API Key is missing.");
     }
-    
-    // FIX: Simplified the message mapping logic in the handler. Messages array is now pre-formatted before being passed here.
+
+    // --- 1️⃣ Language Detection Function (Simple heuristic) ---
+    function detectLanguage(text) {
+        const hindiChars = /[\u0900-\u097F]/; // Unicode range for Devanagari
+        return hindiChars.test(text) ? "hi" : "en";
+    }
+
+    // Detect language of the latest user message
+    const userMsg = messages[messages.length - 1]?.content || "";
+    const detectedLang = detectLanguage(userMsg);
+
+    // --- 2️⃣ Prepare message array for OpenRouter ---
     const openRouterMessages = messages.map(msg => {
-        if (msg.role === 'ai') {
-            return { role: 'assistant', content: msg.content };
-        } else if (msg.role === 'tool') {
-            // Tool messages are expected to be in the final API format { role: 'tool', tool_call_id: '...', content: '...' }
-            return msg;
+        if (msg.role === "ai") {
+            return { role: "assistant", content: msg.content };
+        } else if (msg.role === "tool") {
+            return msg; // Already formatted
         }
-        return msg; // user role
+        return msg; // user messages unchanged
     });
 
+    // --- 3️⃣ Build the system instruction dynamically (Kept for tool calls) ---
+    let systemInstruction = `You are "Digital Saathi AI", an intelligent bilingual government service assistant operating in India.
+You are fluent in both Hindi (Devanagari script) and English.
+You must always detect the user's query language and respond *entirely* in that same language.
+Never default to Hindi or English; mirror the language of the user's latest query.
+If the query is in Hindi, respond in Hindi only.
+If the query is in English, respond in English only.
+If the query is mixed, respond in the dominant language of the text.
+Be clear, helpful, and factual about Indian government services and information.`;
+
+    // Optional hint to model (helps ensure consistency)
+    if (detectedLang === "hi") {
+        systemInstruction += `\n\nThe user's latest message is in Hindi. Respond only in Hindi.`;
+    } else {
+        systemInstruction += `\n\nThe user's latest message is in English. Respond only in English.`;
+    }
+
+    // --- 4️⃣ Create request body (WITH explicit prompt_language toggle) ---
     const body = {
         model: AI_MODEL,
-        messages: openRouterMessages,
+        messages: [
+            { role: "system", content: systemInstruction },
+            ...openRouterMessages,
+        ],
         tools: toolDefinitions,
         temperature: 0.2,
-        // Optional attribution headers for OpenRouter visibility
         extra_body: {
-             "prompt_language": "hi-IN",
+            // This explicitly forces the model's output language at the API level.
+            "prompt_language": detectedLang === "hi" ? "hi-IN" : "en-IN"
         }
     };
-    
-    // Add system instruction as the first message
-    const systemInstruction = `You are "Digital Saathi AI", an expert voice-first government service assistant operating in India.
-Your primary language is Hindi (Devanagari script), but you are fluent in English.
-Your goal is to guide the user through government processes, file complaints (which are saved locally), and provide necessary information using your internal knowledge base and mock data tools.
-You DO NOT have access to live external APIs like NCH or OpenWeatherMap, so you must rely on the mock data provided by your tools.
-For all other queries, answer directly.
-Maintain a helpful, encouraging, and authoritative tone.`;
 
-    body.messages.unshift({
-        role: 'system',
-        content: systemInstruction
-    });
-
+    // --- 5️⃣ Headers ---
     const headers = {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'digital-saathi-ai.app', 
-        'X-Title': 'Digital Saathi AI', 
+        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "digital-saathi-ai.app",
+        "X-Title": "Digital Saathi AI",
     };
 
-    // Added 25-second timeout for stability
-    const response = await axios.post(OPENROUTER_URL, body, { 
+    // --- 6️⃣ Make the API call with timeout ---
+    const response = await axios.post(OPENROUTER_URL, body, {
         headers,
-        timeout: 25000, 
+        timeout: 25000,
     });
+
     return response.data;
 }
+
 
 // --- NEW: Google Search Handler for General Queries ---
 /**
@@ -228,7 +248,9 @@ app.post("/api/chat", async (req, res) => {
         // Add current user message
         messages.push({ role: 'user', content: userMessage });
 
+        // --- NEW LOGIC: Call the revised API handler ---
         let response = await callOpenRouterAPI(messages, toolDefinitions);
+        // --- END NEW LOGIC ---
         
         let aiResponse = response.choices[0].message.content;
         let toolCalls = response.choices[0].message.tool_calls;

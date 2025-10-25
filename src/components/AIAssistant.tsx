@@ -1,6 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mic, Send, Volume2, Minimize2, MicOff } from 'lucide-react';
+import { 
+  X, 
+  Mic, 
+  Send, 
+  Volume2, 
+  Minimize2, 
+  MicOff, 
+  ChevronUp, // ADDED
+  ChevronDown // ADDED
+} from 'lucide-react';
 
 interface AIAssistantProps {
   isOpen: boolean;
@@ -23,6 +32,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  
+  // NEW STATE: To control visibility of the quick actions
+  const [isQuickActionsVisible, setIsQuickActionsVisible] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -36,7 +48,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isQuickActionsVisible]); // Scroll when quick actions visibility changes
 
   // Initialize Speech Synthesis and Speech Recognition
   useEffect(() => {
@@ -427,22 +439,54 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
               </div>
 
               {/* Quick Actions and Input are fixed at the bottom (flex-shrink-0) */}
-              <div className="px-4 sm:px-6 pb-4 flex-shrink-0">
-                <p className="text-gray-400 text-sm mb-3">Quick Actions - एक क्लिक में:</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {quickActions.map((action, index) => (
-                    <motion.button
-                      key={index}
-                      onClick={() => handleSendMessage(action)}
-                      className="bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl px-3 py-2 text-sm text-white transition-all duration-300 text-left"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      {action}
-                    </motion.button>
-                  ))}
+              <div className="px-4 sm:px-6 flex-shrink-0 border-t border-white/10 pt-4">
+                {/* Quick Actions Header and Toggle */}
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-gray-400 text-sm font-medium">Quick Actions - एक क्लिक में:</p>
+                  <motion.button 
+                    onClick={() => setIsQuickActionsVisible(!isQuickActionsVisible)}
+                    className="text-white p-1 rounded-full hover:bg-white/10 transition-colors"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    aria-label={isQuickActionsVisible ? "Minimize Quick Actions" : "Expand Quick Actions"}
+                  >
+                    {isQuickActionsVisible ? (
+                      <ChevronDown className="w-5 h-5 text-gray-400" />
+                    ) : (
+                      <ChevronUp className="w-5 h-5 text-gray-400" />
+                    )}
+                  </motion.button>
                 </div>
+
+                {/* Quick Actions Grid (Collapsible) */}
+                <AnimatePresence initial={false}>
+                  {isQuickActionsVisible && (
+                    <motion.div
+                      className="pb-4" // Use padding bottom instead of margin top in the input to control spacing
+                      key="quick-actions-grid"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {quickActions.map((action, index) => (
+                          <motion.button
+                            key={index}
+                            onClick={() => handleSendMessage(action)}
+                            className="bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl px-3 py-2 text-sm text-white transition-all duration-300 text-left"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            {action}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
+
 
               {/* Input is fixed at the bottom (flex-shrink-0) */}
               <div className="p-4 sm:p-6 pt-0 flex-shrink-0">

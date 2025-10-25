@@ -7,9 +7,10 @@ import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import mongoose from "mongoose";
-// axios is removed as no external API calls are made
+import axios from "axios"; // NEW IMPORT: Required for direct API calls
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+// Removed: import { GoogleGenerativeAI } from "@google/generative-ai";
+
 import { complainService, complainServiceToolDefinition } from "./ai/tools/complain-service.js"; 
 import { getNearbyService, getNearbyServiceToolDefinition } from "./ai/tools/geospatial-service.js"; 
 import { getAgricultureData, getAgricultureDataToolDefinition } from "./ai/tools/agriculture-service.js"; 
@@ -44,14 +45,12 @@ mongoose.connect(MONGO_URI)
         console.error('   Please ensure your MongoDB server is running on the URI specified in backend/.env');
     });
 
-// --- Gemini AI Setup ---
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY; 
-console.log("Loaded AI_API_KEY:", GEMINI_API_KEY ? "✅ Found" : "❌ Missing");
+// --- OpenRouter AI Setup ---
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY; 
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const AI_MODEL = "openai/gpt-4o-mini"; // Excellent, fast model supporting tools
 
-let ai = null;
-if (GEMINI_API_KEY) {
-    ai = new GoogleGenerativeAI(GEMINI_API_KEY);
-}
+console.log("Loaded AI_API_KEY:", OPENROUTER_API_KEY ? "✅ Found" : "❌ Missing");
 
 // --- Tool/Function Definitions and Map ---
 const toolFunctions = {
@@ -61,25 +60,77 @@ const toolFunctions = {
     getSchemeAndEducationData, 
 };
 
+// Map tool definitions to OpenRouter/OpenAI format (type: 'function' required)
 const toolDefinitions = [
     complainServiceToolDefinition,
     getNearbyServiceToolDefinition,
     getAgricultureDataToolDefinition, 
     getSchemeAndEducationDataToolDefinition, 
-];
+].map(def => ({
+    type: 'function',
+    function: def,
+}));
 
-// --- System Instruction for Context and Persona (Core NLP) ---
-const systemInstruction = `You are "Digital Saathi AI", an expert voice-first government service assistant operating in India.
+
+// --- OpenRouter API Call Handler (Replaces SDK Logic) ---
+async function callOpenRouterAPI(messages, toolDefinitions) {
+    if (!OPENROUTER_API_KEY) {
+        throw new Error("OpenRouter API Key is missing.");
+    }
+    
+    // Convert Mongoose history roles to OpenRouter/OpenAI format
+    const openRouterMessages = messages.map(msg => {
+        // Handle tool responses from previous steps
+        if (msg.role === 'tool') {
+             // Extract function response data from the original structure
+             const functionResponse = msg.parts[0].functionResponse;
+             return {
+                 role: 'tool',
+                 tool_call_id: functionResponse.call_id, // tool_call_id must be sent back
+                 content: JSON.stringify(functionResponse.response),
+             };
+        }
+        // Handle user and model messages
+        return {
+            role: msg.role === 'ai' ? 'assistant' : msg.role,
+            content: msg.content,
+        };
+    });
+
+    const body = {
+        model: AI_MODEL,
+        messages: openRouterMessages,
+        tools: toolDefinitions,
+        temperature: 0.2,
+        // Optional attribution headers for OpenRouter visibility
+        extra_body: {
+             "prompt_language": "hi-IN",
+        }
+    };
+    
+    // Add system instruction as the first message
+    const systemInstruction = `You are "Digital Saathi AI", an expert voice-first government service assistant operating in India.
 Your primary language is Hindi (Devanagari script), but you are fluent in English.
 Your goal is to guide the user through government processes, file complaints (which are saved locally), and provide necessary information using your internal knowledge base and mock data tools.
 You DO NOT have access to live external APIs like NCH or OpenWeatherMap, so you must rely on the mock data provided by your tools.
-
-If a query closely matches a 'Canned Response' provided by the user's existing database, prioritize formulating your answer using that response.
-If the user asks for a physical service location, use the 'getNearbyService' tool (uses mock data).
-If the user asks to file a complaint, use the 'complainService' tool (saves to local database).
-If the user asks about farming, weather, mandi prices, or schemes, use the 'getAgricultureData' or 'getSchemeAndEducationData' tool (uses internal mock data).
 For all other queries, answer directly.
 Maintain a helpful, encouraging, and authoritative tone.`;
+
+    body.messages.unshift({
+        role: 'system',
+        content: systemInstruction
+    });
+
+    const headers = {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'digital-saathi-ai.app', // Required by OpenRouter for attribution
+        'X-Title': 'Digital Saathi AI', 
+    };
+
+    const response = await axios.post(OPENROUTER_URL, body, { headers });
+    return response.data;
+}
 
 // --- Main Logic: Chat Endpoint (/api/chat) ---
 app.post("/api/chat", async (req, res) => {
@@ -93,7 +144,8 @@ app.post("/api/chat", async (req, res) => {
         // 1. Service Matching Logic (Canned Responses - Fast NLP Filter)
         const services = await Service.find({}).lean();
         let cannedResponse = null;
-        const THRESHOLD = 0.4; 
+        // CORRECTED: Increased threshold from 0.4 to 0.7 for higher confidence matching
+        const THRESHOLD = 0.7; 
 
         for (const service of services) {
             const allMatchableTerms = [service.name, service.description, ...service.keywords];
@@ -117,11 +169,11 @@ app.post("/api/chat", async (req, res) => {
             });
         }
         
-        // 2. Fallback to Gemini for Tool/General Queries (Core LLM NLP)
-        if (!ai) {
+        // 2. Fallback to OpenRouter for Tool/General Queries (Core LLM NLP)
+        if (!OPENROUTER_API_KEY) {
              return res.status(500).json({ 
-                aiResponse: "माफ़ करना, सामान्य चैट के लिए AI API Key सेट नहीं है।",
-                error: "AI API key missing for fallback chat."
+                aiResponse: "माफ़ करना, सामान्य चैट के लिए OpenRouter API Key सेट नहीं है।",
+                error: "OpenRouter API key missing for fallback chat."
             });
         }
 
@@ -133,74 +185,71 @@ app.post("/api/chat", async (req, res) => {
             currentConversationId = newConversation._id;
         }
 
-        const history = await Message.find({ conversationId: currentConversationId })
+        let history = await Message.find({ conversationId: currentConversationId })
             .sort({ timestamp: 1 })
             .select('role content')
             .lean();
 
-        // Convert Mongoose history to Gemini history format
-        const geminiHistory = history.map(msg => ({
-            role: msg.role === 'user' ? 'user' : 'model',
-            parts: [{ text: msg.content }],
+        // Prepare messages array for API call
+        // The OpenRouter API call handler expects objects with { role, content } for user/model and special tool objects.
+        let messages = history.map(msg => ({ 
+             role: msg.role === 'ai' ? 'assistant' : msg.role, 
+             content: msg.content
         }));
+        
+        messages.push({ role: 'user', content: userMessage });
 
-        const currentMessages = [...geminiHistory, { role: 'user', parts: [{ text: userMessage }] }];
-
-        const chat = ai.getGenerativeModel({ 
-            model: "gemini-2.5-flash",
-            systemInstruction: systemInstruction,
-            config: {
-                tools: [{ functionDeclarations: toolDefinitions }]
-            }
-        });
-
-        let response = await chat.generateContent({ contents: currentMessages });
-
+        let response = await callOpenRouterAPI(messages, toolDefinitions);
+        
+        let aiResponse = response.choices[0].message.content;
+        let toolCalls = response.choices[0].message.tool_calls;
+        
         // Step 1: Check for function calls (Tool Execution)
-        if (response.functionCalls && response.functionCalls.length > 0) {
+        if (toolCalls && toolCalls.length > 0) {
             const toolResults = [];
-            for (const call of response.functionCalls) {
-                const func = toolFunctions[call.name];
+            
+            // Add the model's message requesting tool execution to history for the next call
+            messages.push({
+                role: 'assistant',
+                tool_calls: toolCalls,
+                content: aiResponse || null // Content can be null when tool is called
+            });
+            
+            for (const call of toolCalls) {
+                const func = toolFunctions[call.function.name];
                 if (!func) {
-                    throw new Error(`Unknown function call: ${call.name}`);
+                    throw new Error(`Unknown function call: ${call.function.name}`);
                 }
                 
-                // NOTE: Passing only Service model, as Axios is no longer used for tools
-                const result = await func(call.args, { Service }); 
+                // Parse the arguments string to a JSON object
+                const args = JSON.parse(call.function.arguments);
+                const result = await func(args, { Service }); 
+
                 toolResults.push({
-                    functionCall: call,
-                    result: result,
+                    tool_call_id: call.id, // Pass back the ID from the model
+                    output: result,
                 });
             }
 
             // Send tool results back to the model for final response generation
-            const toolResponseParts = toolResults.map(tr => ({
-                functionResponse: {
-                    name: tr.functionCall.name,
-                    response: tr.result,
-                }
-            }));
-            
-            const messagesWithToolResults = [
-                ...currentMessages, 
-                {
-                    role: 'model',
-                    parts: response.candidates[0].content.parts
-                },
-                {
+            toolResults.forEach(tr => {
+                messages.push({
                     role: 'tool',
-                    parts: toolResponseParts.map(p => ({ functionResponse: p.functionResponse }))
-                }
-            ];
+                    tool_call_id: tr.tool_call_id,
+                    content: JSON.stringify(tr.output),
+                });
+            });
 
-            response = await chat.generateContent({ contents: messagesWithToolResults });
+            // Call OpenRouter again with tool results appended
+            response = await callOpenRouterAPI(messages, toolDefinitions);
+            aiResponse = response.choices[0].message.content;
         }
 
-        const aiResponse = response.text;
 
         // 3. Save new messages
         await Message.insertMany([
             { conversationId: currentConversationId, role: 'user', content: userMessage },
+            // Save the final AI response (text content)
             { conversationId: currentConversationId, role: 'ai', content: aiResponse },
         ]);
 
@@ -213,12 +262,19 @@ app.post("/api/chat", async (req, res) => {
         let customMessage = "माफ़ करना, मेरे AI सिस्टम में कोई तकनीकी समस्या आ गई है।";
         let statusCode = 500;
 
-        if (err.message.includes('MongooseError') || err.message.includes('connect')) {
+        // Check for common Axios/HTTP errors
+        if (axios.isAxiosError(err) && err.response) {
+            statusCode = err.response.status;
+            if (statusCode === 401) {
+                 customMessage = "OpenRouter API Key अमान्य है। कृपया अपनी Key और Billing (बिलिंग) जांचें।";
+            } else if (statusCode === 429) {
+                 customMessage = "OpenRouter की दर सीमा (Rate Limit) पार हो गई है।";
+            } else {
+                 customMessage = `OpenRouter से कनेक्ट करने में HTTP त्रुटि (${statusCode})।`;
+            }
+        }
+        else if (err.message.includes('MongooseError') || err.message.includes('connect')) {
             customMessage = "डेटाबेस कनेक्शन में समस्या है। कृपया सुनिश्चित करें कि MongoDB चल रहा है।";
-        } 
-        else if (err.message.includes('quota') || err.message.includes('429')) {
-             statusCode = 429;
-             customMessage = "माफ़ करना, मेरे AI सिस्टम का **दैनिक कोटा समाप्त** हो गया है या दर सीमा (Rate Limit) पार हो गई है। कृपया API Key की सीमाएँ जाँचें।";
         }
         
         res.status(statusCode).json({ 

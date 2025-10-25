@@ -40,7 +40,7 @@ async function getNearbyService(args) {
         office: 'सरकारी कार्यालय'
     };
     const serviceName = serviceMap[serviceType] || serviceType;
-    
+    const locationText = location && location.trim() ? location : 'आपके वर्तमान स्थान';
     const serviceList = response.data.map(
       (s, index) => `${index + 1}. ${s.name} (${s.distance} दूर, संपर्क: ${s.contact})`
     ).join('; ');

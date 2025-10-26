@@ -26,44 +26,47 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onAIToggle }) => {
       <div className="container mx-auto grid lg:grid-cols-2 gap-12 items-center">
         {/* Left Side - Text Content */}
         <motion.div
-          className="space-y-8"
+          className="space-y-6 text-textDark" // Dark text for light background
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8 }}
         >
           <div className="space-y-4">
             <motion.div
-              className="inline-flex items-center space-x-2 bg-gradient-to-r from-primary-500/20 to-purple-500/20 backdrop-blur-sm border border-primary-500/30 rounded-full px-4 py-2"
+              // Light pill background
+              className="inline-flex items-center space-x-2 bg-primary-500/10 border border-primary-500/20 rounded-full px-3 py-1" 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <Sparkles className="w-4 h-4 text-primary-400" />
-              <span className="text-sm text-primary-400 font-medium">AI-Powered Assistant</span>
+              <Sparkles className="w-4 h-4 text-primary-600" />
+              <span className="text-sm text-textMuted font-medium">AI-Powered Government Assistant</span>
             </motion.div>
 
             <motion.h1
-              className="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight"
+              className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <span className="bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+              {/* Dark text for visibility */}
+              <span className="text-textDark">
                 बस बोलिए,
               </span>
               <br />
-              <span className="bg-gradient-to-r from-primary-400 via-purple-400 to-secondary-400 bg-clip-text text-transparent">
+              {/* Used Teal accent color */}
+              <span className="text-accentPrimary-600">
                 आपकी मदद तैयार है
               </span>
             </motion.h1>
 
             <motion.p
-              className="text-xl md:text-2xl text-gray-300 max-w-2xl"
+              className="text-lg text-textMuted max-w-2xl"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
             >
-              No typing. No confusion. Just your voice.
+              Voice-first assistance for public services, no typing required.
             </motion.p>
           </div>
 
@@ -73,13 +76,14 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onAIToggle }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
           >
-            <p className="text-gray-400 font-medium">Try saying:</p>
-            <div className="flex flex-wrap gap-3">
+            <p className="text-textMuted font-medium">Try saying:</p>
+            <div className="flex flex-wrap gap-2">
               {examples.map((example, index) => (
                 <motion.span
                   key={index}
-                  className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 text-sm text-gray-300 hover:bg-white/20 transition-all duration-300 cursor-pointer"
-                  whileHover={{ scale: 1.05 }}
+                  // Light example pills
+                  className="bg-backgroundCard border border-gray-200 rounded-full px-3 py-1 text-xs text-textDark hover:bg-gray-100 transition-all duration-300 cursor-pointer shadow-sm"
+                  whileHover={{ scale: 1.02 }}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.6 + index * 0.1 }}
@@ -93,12 +97,12 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onAIToggle }) => {
 
         {/* Right Side - AI Entry */}
         <motion.div
-          className="flex flex-col items-center space-y-8"
+          className="flex flex-col items-center space-y-6"
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
-          {/* Large Mic Button */}
+          {/* Mic Button - Clean Blue/Teal Gradient */}
           <motion.div
             className="relative"
             animate={{ y: [0, -10, 0] }}
@@ -106,30 +110,20 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onAIToggle }) => {
           >
             <motion.button
               onClick={handleVoiceClick}
-              className={`relative w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-to-r from-primary-500 to-purple-600 flex items-center justify-center shadow-2xl transition-all duration-300 ${
+              // Clean Blue to Teal Gradient
+              className={`relative w-28 h-28 md:w-32 md:h-32 rounded-full bg-gradient-to-r from-primary-600 to-accentPrimary-500 flex items-center justify-center shadow-lg transition-all duration-300 ${
                 isListening ? 'animate-pulse' : ''
-              }`}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              animate={{
-                boxShadow: [
-                  "0 0 40px rgba(59, 130, 246, 0.5)",
-                  "0 0 80px rgba(139, 92, 246, 0.8)",
-                  "0 0 40px rgba(59, 130, 246, 0.5)"
-                ]
-              }}
-              transition={{ 
-                boxShadow: { duration: 3, repeat: Infinity },
-                scale: { duration: 0.2 }
-              }}
+              } text-white`}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.98 }}
             >
-              <Mic className="w-12 h-12 md:w-16 md:h-16 text-white" />
+              <Mic className="w-10 h-10 md:w-12 md:h-12 text-white" />
               
-              {/* Pulse rings */}
+              {/* Pulse rings: Use two matching colors (Primary/Accent 1) */}
               {isListening && (
                 <>
                   <div className="absolute inset-0 rounded-full bg-primary-500/30 animate-pulse-ring" />
-                  <div className="absolute inset-0 rounded-full bg-purple-500/30 animate-pulse-ring" style={{ animationDelay: '0.5s' }} />
+                  <div className="absolute inset-0 rounded-full bg-accentPrimary-500/30 animate-pulse-ring" style={{ animationDelay: '0.5s' }} />
                 </>
               )}
             </motion.button>
@@ -137,44 +131,53 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onAIToggle }) => {
 
           {/* AI Avatar */}
           <motion.div
-            className="w-20 h-20 bg-gradient-to-r from-secondary-400 to-primary-400 rounded-full flex items-center justify-center shadow-xl"
-            animate={{ rotate: [0, 5, -5, 0] }}
-            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+            // Accent color for contrast: Teal/Blue
+            className="w-16 h-16 bg-gradient-to-r from-accentPrimary-500 to-primary-500 rounded-full flex items-center justify-center shadow-md"
           >
-            <span className="text-3xl">🤖</span>
+            <span className="text-2xl text-white">🤖</span>
           </motion.div>
 
-          {/* AI Chat Preview */}
+          {/* AI Chat Preview - Light look */}
           <motion.div
-            className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 max-w-sm"
+            // Light background, dark text
+            className="bg-backgroundCard border border-gray-200 rounded-xl p-5 max-w-sm shadow-lg text-textDark"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.8 }}
           >
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-purple-600 rounded-full flex items-center justify-center">
-                <span className="text-sm">🤖</span>
+            <div className="flex items-center space-x-3 mb-3">
+              {/* Logo gradient: Blue to Teal */}
+              <div className="w-7 h-7 bg-gradient-to-r from-primary-600 to-accentPrimary-500 rounded-full flex items-center justify-center">
+                <span className="text-xs text-white">🤖</span>
               </div>
               <div>
-                <p className="font-semibold text-white">Digital Saathi</p>
-                <p className="text-xs text-green-400 flex items-center">
-                  <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+                <p className="font-semibold text-textDark text-sm">Digital Saathi</p>
+                <p className="text-xs text-green-600 flex items-center">
+                  <div className="w-2 h-2 bg-green-600 rounded-full mr-1 animate-pulse"></div>
                   Online
                 </p>
               </div>
             </div>
             
             <div className="space-y-3">
-              <div className="bg-primary-500/20 rounded-lg p-3">
-                <p className="text-sm text-white">आपको किस चीज़ में मदद चाहिए?</p>
+              <div className="bg-primary-500/10 rounded-lg p-3">
+                <p className="text-sm text-textDark">आपको किस चीज़ में मदद चाहिए?</p>
               </div>
               
               <div className="flex space-x-2">
-                <button className="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg p-2 text-xs text-white transition-all duration-300 flex items-center justify-center space-x-1">
-                  <Mic className="w-3 h-3" />
+                <button 
+                  // Light button style
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg p-2 text-xs text-textDark transition-all duration-300 flex items-center justify-center space-x-1"
+                  onClick={handleVoiceClick}
+                >
+                  <Mic className="w-3 h-3 text-primary-600" />
                   <span>बोलकर बताएं</span>
                 </button>
-                <button className="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg p-2 text-xs text-white transition-all duration-300">
+                <button 
+                  // Light button style
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg p-2 text-xs text-textDark transition-all duration-300"
+                  onClick={onAIToggle}
+                >
                   या लिखें
                 </button>
               </div>

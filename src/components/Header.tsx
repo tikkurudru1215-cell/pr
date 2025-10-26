@@ -17,28 +17,31 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onAIToggle }) => {
 
   return (
     <motion.header 
-      className="fixed top-0 left-0 right-0 z-40 bg-white/10 backdrop-blur-xl border-b border-white/20"
+      // Light background, dark text
+      className="fixed top-0 left-0 right-0 z-40 bg-backgroundCard/95 backdrop-blur-md border-b border-gray-200 text-textDark"
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <motion.div 
           className="flex items-center space-x-3"
           whileHover={{ scale: 1.05 }}
         >
-          <div className="w-10 h-10 bg-gradient-to-r from-primary-500 to-purple-600 rounded-xl flex items-center justify-center">
-            <Bot className="w-6 h-6 text-white" />
+          {/* Logo: Blue to Teal */}
+          <div className="w-9 h-9 bg-gradient-to-r from-primary-600 to-accentPrimary-500 rounded-lg flex items-center justify-center">
+            <Bot className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold bg-gradient-to-r from-primary-400 to-purple-400 bg-clip-text text-transparent">
+            {/* Title text is dark */}
+            <h1 className="text-lg font-bold text-textDark">
               Digital Saathi AI
             </h1>
-            <p className="text-xs text-gray-300">आपका डिजिटल सहायक</p>
+            <p className="text-xs text-textMuted">आपका डिजिटल सहायक</p>
           </div>
         </motion.div>
 
-        <nav className="hidden md:flex items-center space-x-8">
+        <nav className="hidden md:flex items-center space-x-6">
           {[
             { id: 'home', label: 'Home', icon: Home },
             { id: 'services', label: 'Services', icon: Grid3X3 },
@@ -47,10 +50,11 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onAIToggle }) => {
             <motion.button
               key={id}
               onClick={() => scrollToSection(id)}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-all duration-300 ${
+              className={`flex items-center space-x-2 px-3 py-1 rounded-full transition-all duration-300 ${
+                // Highlight button using core blue
                 currentSection === id
-                  ? 'bg-white/20 text-white'
-                  : 'text-gray-300 hover:text-white hover:bg-white/10'
+                  ? 'bg-primary-600 text-white' // Solid color highlight
+                  : 'text-textMuted hover:text-textDark hover:bg-gray-100' // Light hover state
               }`}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -63,11 +67,12 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onAIToggle }) => {
 
         <motion.button
           onClick={onAIToggle}
-          className="bg-gradient-to-r from-primary-500 to-purple-600 hover:from-primary-600 hover:to-purple-700 px-6 py-3 rounded-full font-semibold shadow-lg flex items-center space-x-2 transition-all duration-300"
-          whileHover={{ scale: 1.05, boxShadow: "0 0 30px rgba(59, 130, 246, 0.5)" }}
+          // Primary Action Button: Blue to Teal
+          className="bg-gradient-to-r from-primary-600 to-accentPrimary-500 hover:from-primary-700 hover:to-accentPrimary-600 px-5 py-2 rounded-full font-semibold shadow-md flex items-center space-x-2 transition-all duration-300 text-white" // Text is white on dark button
+          whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(37, 99, 235, 0.3)" }}
           whileTap={{ scale: 0.95 }}
         >
-          <Mic className="w-5 h-5" />
+          <Mic className="w-4 h-4" />
           <span className="hidden sm:inline">Start AI Help</span>
           <span className="sm:hidden">AI</span>
         </motion.button>

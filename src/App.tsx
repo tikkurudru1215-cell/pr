@@ -62,7 +62,8 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white font-poppins relative overflow-x-hidden">
+    // Changed to light background and dark text
+    <div className="min-h-screen bg-backgroundLight text-textDark font-poppins relative overflow-x-hidden"> 
       <ParticleBackground />
 
       <Header
@@ -94,14 +95,15 @@ function App() {
         >
           <motion.button
             onClick={() => setIsAIOpen(true)}
-            className="relative w-20 h-20 bg-gradient-to-r from-primary-500 to-purple-600 rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-110 transition-all duration-300 group"
-            whileHover={{ scale: 1.1 }}
+            // Clean gradient: Blue to Teal
+            className="relative w-16 h-16 bg-gradient-to-r from-primary-600 to-accentPrimary-500 rounded-full shadow-lg flex items-center justify-center text-white hover:scale-105 transition-all duration-300 group"
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             animate={{
               boxShadow: [
-                "0 0 30px rgba(59, 130, 246, 0.6)",
-                "0 0 50px rgba(139, 92, 246, 0.9)",
-                "0 0 30px rgba(59, 130, 246, 0.6)"
+                "0 0 15px rgba(37, 99, 235, 0.4)", // Primary Blue
+                "0 0 25px rgba(20, 184, 166, 0.6)", // Accent Teal
+                "0 0 15px rgba(37, 99, 235, 0.4)"
               ]
             }}
             transition={{
@@ -109,42 +111,39 @@ function App() {
               scale: { duration: 0.2 }
             }}
           >
-            <div className="absolute inset-0 w-20 h-20 bg-primary-500/30 rounded-full animate-pulse-ring"></div>
-            <div
-              className="absolute inset-0 w-20 h-20 bg-purple-500/30 rounded-full animate-pulse-ring"
-              style={{ animationDelay: '0.5s' }}
-            ></div>
-
+            {/* Simplified avatar appearance */}
             <div className="relative z-10 flex flex-col items-center">
-              <span className="text-3xl mb-1">🤖</span>
-              <span className="text-xs font-bold">AI</span>
+              <span className="text-2xl mb-0.5">🤖</span>
             </div>
 
-            <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-black/80 text-white px-3 py-1 rounded-lg text-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+            <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-textDark text-white px-2 py-1 rounded-md text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
               बोलकर मदद लें
             </div>
           </motion.button>
         </motion.div>
       )}
 
+      {/* Simplified welcome banner */}
       {!isAIOpen && (
         <motion.div
-          className="fixed bottom-32 right-6 z-40 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-4 max-w-xs"
+          // Light background/darker text for banner
+          className="fixed bottom-24 right-6 z-40 bg-backgroundCard border border-gray-200 rounded-xl p-3 max-w-xs text-textDark shadow-lg" 
           initial={{ opacity: 0, x: 100 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 2 }}
         >
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-purple-600 rounded-full flex items-center justify-center">
-              <span className="text-sm">🤖</span>
+          <div className="flex items-center space-x-2">
+            {/* Clean logo gradient */}
+            <div className="w-7 h-7 bg-gradient-to-r from-primary-600 to-accentPrimary-500 rounded-full flex items-center justify-center">
+              <span className="text-xs text-white">🤖</span>
             </div>
             <div>
-              <p className="text-white font-medium text-sm">Digital Saathi</p>
-              <p className="text-gray-300 text-xs">मदद के लिए क्लिक करें</p>
+              <p className="font-medium text-textDark text-sm">Digital Saathi</p>
+              <p className="text-textMuted text-xs">मदद के लिए क्लिक करें</p>
             </div>
           </div>
           <motion.div
-            className="mt-2 text-xs text-primary-300"
+            className="mt-2 text-xs text-primary-600"
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
           >

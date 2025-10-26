@@ -25,12 +25,13 @@ const ParticleBackground: React.FC = () => {
       constructor() {
         this.x = Math.random() * canvas!.width;
         this.y = Math.random() * canvas!.height;
-        this.size = Math.random() * 3 + 1;
-        this.speedX = (Math.random() - 0.5) * 0.5;
-        this.speedY = (Math.random() - 0.5) * 0.5;
-        this.opacity = Math.random() * 0.5 + 0.2;
+        this.size = Math.random() * 2 + 1; // Slightly smaller particles
+        this.speedX = (Math.random() - 0.5) * 0.3; // Slower movement
+        this.speedY = (Math.random() - 0.5) * 0.3;
+        this.opacity = Math.random() * 0.5 + 0.1;
         
-        const colors = ['#3b82f6', '#8b5cf6', '#14b8a6', '#f97316'];
+        // Light color scheme particles
+        const colors = ['#60a5fa', '#14b8a6', '#94a3b8', '#1e293b']; // Light Blue, Teal, Muted Gray, Dark Slate
         this.color = colors[Math.floor(Math.random() * colors.length)];
       }
 
@@ -62,7 +63,7 @@ const ParticleBackground: React.FC = () => {
 
     const initParticles = () => {
       particles = [];
-      const particleCount = Math.min(100, Math.floor((canvas.width * canvas.height) / 10000));
+      const particleCount = Math.min(80, Math.floor((canvas.width * canvas.height) / 15000)); // Fewer particles
       
       for (let i = 0; i < particleCount; i++) {
         particles.push(new Particle());
@@ -70,7 +71,9 @@ const ParticleBackground: React.FC = () => {
     };
 
     const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Use translucent background to create trails/fade effect on light background
+      ctx.fillStyle = 'rgba(240, 244, 248, 0.3)'; // backgroundLight with opacity
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       particles.forEach(particle => {
         particle.update();
@@ -87,7 +90,7 @@ const ParticleBackground: React.FC = () => {
           if (distance < 100) {
             ctx.save();
             ctx.globalAlpha = (100 - distance) / 100 * 0.1;
-            ctx.strokeStyle = '#3b82f6';
+            ctx.strokeStyle = '#3b82f6'; // Primary Blue connection lines
             ctx.lineWidth = 0.5;
             ctx.beginPath();
             ctx.moveTo(particle.x, particle.y);
@@ -122,8 +125,9 @@ const ParticleBackground: React.FC = () => {
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none z-0"
+      // Background gradient: Very light blue to white
       style={{ 
-        background: 'linear-gradient(135deg, #0f172a 0%, #581c87 50%, #0f172a 100%)'
+        background: 'linear-gradient(135deg, #f0f4f8 0%, #ffffff 100%)' // Use defined light colors
       }}
     />
   );

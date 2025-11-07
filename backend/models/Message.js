@@ -1,5 +1,5 @@
 // backend/models/Message.js
-import mongoose from 'mongoose'; // Changed require to import
+import mongoose from 'mongoose';
 
 const messageSchema = new mongoose.Schema({
   conversationId: {
@@ -9,7 +9,7 @@ const messageSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'ai'],
+    enum: ['user', 'ai', 'tool'], // ✅ must include 'tool'
     required: true,
   },
   content: {
@@ -22,4 +22,9 @@ const messageSchema = new mongoose.Schema({
   },
 });
 
-export default mongoose.model('Message', messageSchema); // Changed module.exports to export default
+// 🧠 CRITICAL FIX: Force delete existing compiled model
+if (mongoose.models.Message) {
+  delete mongoose.models.Message; // 🔥 ensure old version is wiped
+}
+
+export default mongoose.models.Message || mongoose.model('Message', messageSchema);

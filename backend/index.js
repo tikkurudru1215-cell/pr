@@ -19,6 +19,8 @@ import Service from "./models/Service.js";
 import Conversation from "./models/Conversation.js";
 import Message from "./models/Message.js";
 
+// --- REMOVED VOICE SERVICE IMPORTS (multer, transcribeAudio, synthesizeSpeech) ---
+
 // --- Setup File Paths and .env ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -173,6 +175,8 @@ async function performGoogleSearch(query) {
     }
 }
 
+// --- REMOVED: /api/transcribe ENDPOINT ---
+// --- REMOVED: /api/synthesize ENDPOINT ---
 
 // --- Main Logic: Chat Endpoint (/api/chat) ---
 app.post("/api/chat", async (req, res) => {
@@ -351,7 +355,7 @@ app.post("/api/chat", async (req, res) => {
         }
         // Handle timeout error
         else if (axios.isAxiosError(err) && err.code === 'ECONNABORTED') {
-             customMessage = "क्षमा करें, AI मॉडल से जवाब आने में बहुत देर हो गई।";
+             customMessage = "क्षमा करें, AI मॉडल से जवाब आने में बहुत देर हो गई है।";
              statusCode = 504; 
         }
         // Specific tool execution error handling (Includes the error the user is seeing)

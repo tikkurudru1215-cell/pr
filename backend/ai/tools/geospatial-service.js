@@ -40,14 +40,26 @@ async function getNearbyService(args) {
         office: 'सरकारी कार्यालय'
     };
     const serviceName = serviceMap[serviceType] || serviceType;
-    const locationText = location && location.trim() ? location : 'आपके वर्तमान स्थान';
+    
+    // --- UPDATED: Check for "Current Location" placeholder or explicit location ---
+    let locationText = 'आपके सामान्य क्षेत्र';
+    if (location && location.trim().toLowerCase().includes('current location')) {
+        // When AI gets coordinates, it uses "Current Location"
+        locationText = 'आपके वर्तमान डिवाइस स्थान'; 
+    } else if (location && location.trim()) {
+        locationText = location;
+    }
+    // --------------------------------------------------------------------------
+    
     const serviceList = response.data.map(
       (s, index) => `${index + 1}. ${s.name} (${s.distance} दूर, संपर्क: ${s.contact})`
     ).join('; ');
     
     return {
       success: true,
-      message: `${location || 'आपके वर्तमान स्थान'} के लिए ${serviceName} के परिणाम: ${serviceList}.`,
+      // --- UPDATED MESSAGE ---
+      message: `${locationText} के लिए ${serviceName} के परिणाम: ${serviceList}.`,
+      // -----------------------
     };
   }
 
@@ -67,6 +79,8 @@ const getNearbyServiceToolDefinition = {
       location: {
         type: "string",
         description: "The location provided by the user (or a placeholder like 'current location' if not specified).",
+        // Added 'Current Location' to enum for clarity, though model uses it as free text
+        enum: ["hospital", "police", "office", "Current Location"], 
       },
       serviceType: {
         type: "string",

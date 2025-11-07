@@ -122,8 +122,8 @@ const ServiceCategories: React.FC<ServiceCategoriesProps> = ({
           </div>
         )}
 
-        {/* Services Grid */}
-        {services.length > 0 ? (
+        {/* Services Grid: ADDED Array.isArray CHECK in App.tsx (already handled) */}
+        {Array.isArray(services) && services.length > 0 ? (
           <motion.div
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
             variants={containerVariants}
@@ -171,6 +171,7 @@ const ServiceCategories: React.FC<ServiceCategoriesProps> = ({
           </motion.div>
         ) : (
           <div className="text-center text-textMuted">
+            {/* Display message if services array is empty or API failed gracefully */}
             {!loading && !error && "No services available. Please check the backend's database seed."}
           </div>
         )}

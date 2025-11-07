@@ -76,7 +76,9 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onAIToggle }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
           >
-            <p className="text-textMuted font-medium">Try saying:</p>
+            {/* FIX: Changed P tag to DIV tag to resolve DOM nesting warning */}
+            <div className="text-textMuted font-medium">Try saying:</div> 
+            
             <div className="flex flex-wrap gap-2">
               {examples.map((example, index) => (
                 <motion.span

@@ -24,11 +24,41 @@ interface Message {
   isVoice?: boolean;
 }
 
-// Helper to determine the language for Text-to-Speech voice selection
+// Define the required voices in state for the unique scripts covering the 22 languages
+interface VoiceMap {
+  en: SpeechSynthesisVoice | null;  // English (Fallback for most Indo-Aryan languages)
+  hi: SpeechSynthesisVoice | null;  // Devanagari (Hindi, Marathi, Nepali, Dogri, Konkani, Maithili, Bodo, Sanskrit, Santali, Sindhi)
+  ur: SpeechSynthesisVoice | null;  // Urdu (Urdu, Kashmiri, Sindhi Perso-Arabic)
+  bn: SpeechSynthesisVoice | null;  // Bengali/Assamese
+  gu: SpeechSynthesisVoice | null;  // Gujarati
+  pa: SpeechSynthesisVoice | null;  // Punjabi (Gurmukhi)
+  or: SpeechSynthesisVoice | null;  // Odia (Oriya)
+  ta: SpeechSynthesisVoice | null;  // Tamil
+  te: SpeechSynthesisVoice | null;  // Telugu
+  kn: SpeechSynthesisVoice | null;  // Kannada
+  ml: SpeechSynthesisVoice | null;  // Malayalam
+  mni: SpeechSynthesisVoice | null; // Manipuri (Meitei)
+  sat: SpeechSynthesisVoice | null; // Santali (Ol Chiki - less common, falls to Devanagari/hi-IN)
+}
+
+// Helper to determine the language/script for Text-to-Speech voice selection
+// Uses Unicode script ranges for robust language detection. (Retained 22-language logic)
 const detectContentLanguage = (text: string): string => {
-  // Checks for Devanagari characters (Hindi)
-  const hindiChars = /[\u0900-\u097F]/; 
-  return hindiChars.test(text) ? 'hi-IN' : 'en-US'; 
+  // Ordered by script uniqueness and priority (Perso-Arabic first for Urdu)
+  if (/[\u0600-\u06FF]/.test(text)) return 'ur-IN';    // Urdu/Arabic (Kashmiri, Sindhi)
+  if (/[\u0900-\u097F]/.test(text)) return 'hi-IN';    // Devanagari (Hindi, Marathi, Nepali, Dogri, Konkani, Maithili, Bodo, Sanskrit)
+  if (/[\u0980-\u09FF]/.test(text)) return 'bn-IN';    // Bengali/Assamese
+  if (/[\u0A00-\u0A7F]/.test(text)) return 'pa-IN';    // Gurmukhi (Punjabi)
+  if (/[\u0A80-\u0AFF]/.test(text)) return 'gu-IN';    // Gujarati
+  if (/[\u0B00-\u0B7F]/.test(text)) return 'or-IN';    // Odia
+  if (/[\u0B80-\u0BFF]/.test(text)) return 'ta-IN';    // Tamil
+  if (/[\u0C00-\u0C7F]/.test(text)) return 'te-IN';    // Telugu
+  if (/[\u0C80-\u0CFF]/.test(text)) return 'kn-IN';    // Kannada
+  if (/[\u0D00-\u0D7F]/.test(text)) return 'ml-IN';    // Malayalam
+  if (/[\uABC0-\uABFF]/.test(text)) return 'mni-IN';   // Meitei (Manipuri)
+  if (/[\u1C50-\u1C7F]/.test(text)) return 'sat-IN';   // Ol Chiki (Santali)
+
+  return 'en-US'; // Default to English
 };
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -52,7 +82,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
   
   const recognitionRef = useRef<any>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
-  const [voices, setVoices] = useState<{ hi: SpeechSynthesisVoice | null, en: SpeechSynthesisVoice | null }>({ hi: null, en: null });
+  const [voices, setVoices] = useState<VoiceMap>({ 
+    en: null, hi: null, ur: null, bn: null, gu: null, pa: null, or: null, ta: null, te: null, kn: null, ml: null, mni: null, sat: null 
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -68,37 +100,60 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
       synthRef.current = window.speechSynthesis;
 
       const loadVoices = () => {
-        const availableVoices = synthRef.current?.getVoices();
+        const availableVoices = synthRef.current?.getVoices() || [];
         
-        // Priority 1: Dedicated Hindi or Indian language voice
-        let hiVoice = availableVoices?.find(voice =>
-          voice.lang.includes('hi') || voice.lang.includes('IN')
-        ); 
-        
-        // Standard English voice
-        const enVoice = availableVoices?.find(voice =>
-            voice.lang.includes('en-US') || voice.lang.includes('en-GB')
-        );
-        
-        // --- ULTIMATE FALLBACK LOGIC ---
-        // If no explicit Hindi voice is found (hiVoice is null):
-        // 1. Try Indian English (en-IN).
-        // 2. Fallback to any found Standard English voice (enVoice).
-        // 3. Fallback to the very first voice in the list (ultimateFallbackVoice).
-        const ultimateFallbackVoice = availableVoices?.[0] || null;
-        
-        if (!hiVoice) {
-            hiVoice = availableVoices?.find(voice => voice.lang.includes('en-IN'));
-        }
-        
-        const finalHiVoice = hiVoice || enVoice || ultimateFallbackVoice;
-        // -----------------------------
+        const langConfigs = [
+          { key: 'hi', code: 'hi-IN', name: 'Hindi' },
+          { key: 'ur', code: 'ur-IN', name: 'Urdu' },
+          { key: 'bn', code: 'bn-IN', name: 'Bengali' },
+          { key: 'gu', code: 'gu-IN', name: 'Gujarati' },
+          { key: 'pa', code: 'pa-IN', name: 'Punjabi' },
+          { key: 'or', code: 'or-IN', name: 'Odia' },
+          { key: 'ta', code: 'ta-IN', name: 'Tamil' },
+          { key: 'te', code: 'te-IN', name: 'Telugu' },
+          { key: 'kn', code: 'kn-IN', name: 'Kannada' },
+          { key: 'ml', code: 'ml-IN', name: 'Malayalam' },
+          { key: 'mni', code: 'mni-IN', name: 'Manipuri' },
+          { key: 'sat', code: 'sat-IN', name: 'Santali' },
+          { key: 'en', code: 'en-US', name: 'English' }, // Primary English
+          { key: 'en-in', code: 'en-IN', name: 'Indian English' }, // Alternative English
+        ];
 
-        setVoices({ hi: finalHiVoice || null, en: enVoice || null });
+        let newVoices: Partial<VoiceMap> = {};
         
-        console.log("TTS Voices Loaded:");
-        console.log(`  - Hindi Voice (hi): ${finalHiVoice ? finalHiVoice.name : 'Not Found (Using Browser Default)'}`);
-        console.log(`  - English Voice (en): ${enVoice ? enVoice.name : 'Not Found'}`);
+        // 1. Collect best matches for all defined codes (Prioritize native code match)
+        langConfigs.forEach(config => {
+          let voice = availableVoices.find(v => v.lang.startsWith(config.code));
+          
+          if (voice) {
+            newVoices[config.key as keyof VoiceMap] = voice;
+          }
+        });
+
+        // 2. Fallback for generic Indian voice where a specific one is missing
+        const genericIndianFallback = newVoices.en || availableVoices.find(v => v.lang.includes('IN')) || availableVoices[0] || null;
+
+        // Ensure all Indian language slots have a voice (even a generic IN one)
+        newVoices.hi = newVoices.hi || genericIndianFallback;
+        newVoices.ur = newVoices.ur || genericIndianFallback;
+        newVoices.bn = newVoices.bn || genericIndianFallback;
+        newVoices.gu = newVoices.gu || genericIndianFallback;
+        newVoices.pa = newVoices.pa || genericIndianFallback;
+        newVoices.or = newVoices.or || genericIndianFallback;
+        newVoices.ta = newVoices.ta || genericIndianFallback;
+        newVoices.te = newVoices.te || genericIndianFallback;
+        newVoices.kn = newVoices.kn || genericIndianFallback;
+        newVoices.ml = newVoices.ml || genericIndianFallback;
+        newVoices.mni = newVoices.mni || genericIndianFallback;
+        newVoices.sat = newVoices.sat || genericIndianFallback;
+        newVoices.en = newVoices.en || genericIndianFallback; // Final English fallback
+
+        setVoices(newVoices as VoiceMap);
+        
+        console.log("TTS Voices Loaded for 22 Languages:");
+        langConfigs.filter(c => c.key !== 'en-in').forEach(config => {
+            console.log(`  - ${config.name} (${config.code}): ${newVoices[config.key as keyof VoiceMap] ? newVoices[config.key as keyof VoiceMap]?.name : 'Fallback Used'}`);
+        });
       };
 
       loadVoices();
@@ -178,74 +233,89 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
   };
 
   /**
-   * TTS FIX: Segments text by language and reads sequentially using correct voices.
+   * TTS: Uses a single utterance for continuous speech.
    */
   const speakText = (text: string) => {
-    if (!synthRef.current) return;
+    if (!synthRef.current || !text) return;
 
     synthRef.current.cancel();
     setIsSpeaking(true);
 
-    // Simple robust segmentation logic: split by Devanagari characters
-    // This allows us to apply the hi-IN lang code to the Hindi parts and en-US to the English parts.
-    const chunks = text.split(/([\u0900-\u097F]+)/g).filter(chunk => chunk.length > 0);
-
-    const combinedSegments: { text: string, lang: string }[] = [];
-
-    for (const chunk of chunks) {
-        const langCode = detectContentLanguage(chunk);
-        combinedSegments.push({ text: chunk.trim(), lang: langCode });
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Determine language and set language tag
+    const langCode = detectContentLanguage(text);
+    utterance.lang = langCode;
+    
+    // Select the best available voice based on the detected language
+    let voice: SpeechSynthesisVoice | null = null;
+    switch (langCode) {
+        case 'hi-IN':
+            voice = voices.hi;
+            break;
+        case 'ur-IN':
+            voice = voices.ur;
+            break;
+        case 'bn-IN':
+            voice = voices.bn;
+            break;
+        case 'gu-IN':
+            voice = voices.gu;
+            break;
+        case 'pa-IN':
+            voice = voices.pa;
+            break;
+        case 'or-IN':
+            voice = voices.or;
+            break;
+        case 'ta-IN':
+            voice = voices.ta;
+            break;
+        case 'te-IN':
+            voice = voices.te;
+            break;
+        case 'kn-IN':
+            voice = voices.kn;
+            break;
+        case 'ml-IN':
+            voice = voices.ml;
+            break;
+        case 'mni-IN':
+            voice = voices.mni;
+            break;
+        case 'sat-IN':
+            voice = voices.sat;
+            break;
+        case 'en-US':
+        default:
+            voice = voices.en;
+            break;
     }
 
-    let segmentIndex = 0;
+    if (voice) {
+      utterance.voice = voice;
+    }
+    
+    // Use the slightly increased rate for fluid delivery
+    utterance.rate = 1.1; 
+    utterance.pitch = 1;
+    utterance.volume = 1;
 
-    const speakNext = () => {
-      if (segmentIndex >= combinedSegments.length) {
+    // Set callback for end of the ENTIRE utterance
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = (event) => {
+        console.error(`Speech synthesis error:`, event.error);
         setIsSpeaking(false);
-        return;
-      }
-
-      const segment = combinedSegments[segmentIndex];
-      segmentIndex++;
-
-      if (segment.text.length === 0) {
-          speakNext(); // Skip empty segments
-          return;
-      }
-
-      const utterance = new SpeechSynthesisUtterance(segment.text);
-      
-      // CRITICAL: Set the correct language code for the segment
-      utterance.lang = segment.lang;
-      
-      // Select the voice. voices.hi now has a non-null value due to the fallback.
-      const voice = segment.lang === 'hi-IN' ? voices.hi : voices.en;
-
-      if (voice) {
-        utterance.voice = voice;
-      }
-      
-      utterance.rate = 1.0; 
-      utterance.pitch = 1;
-      utterance.volume = 1;
-
-      utterance.onend = speakNext; // CRITICAL: Chain the next segment here
-      utterance.onerror = (event) => {
-          console.error(`Speech synthesis error on segment (${segment.lang}):`, event.error);
-          speakNext(); 
-      };
-      
-      synthRef.current!.speak(utterance);
     };
-
-    // Start speaking the first segment
-    speakNext();
+    
+    synthRef.current!.speak(utterance);
   };
 
+  // FIX: Ensure isSpeaking state is reset when cancel() is called.
   const stopSpeaking = () => {
     if (synthRef.current) {
       synthRef.current.cancel();
-      setIsSpeaking(false);
+      setIsSpeaking(false); // Explicitly stop the speaking state
     }
   };
 
@@ -273,6 +343,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
   const handleSendMessage = async (messageText?: string, isVoiceMessage = false) => {
     const text = messageText || inputValue;
     if (!text.trim()) return;
+    
+    // Always stop current speaking when a new message is sent
+    stopSpeaking(); 
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -284,7 +357,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
 
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
-
+    
+    // Speak the user's query immediately after displaying it.
+    speakText(text);
+    
     const typingMessage: Message = {
       id: 'typing',
       type: 'ai',
@@ -330,6 +406,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
       });
 
       setTimeout(() => {
+        // This will cancel the user query speaking if it's still running and start the response.
         speakText(data.aiResponse);
       }, 500);
 
@@ -380,7 +457,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
         />
 
         <motion.div
-          className={`relative bg-backgroundCard border border-gray-300 rounded-none sm:rounded-3xl shadow-2xl w-full max-w-full lg:max-w-4xl xl:max-w-5xl flex flex-col transition-all duration-300 text-textDark`}
+          // FIX for Scrolling/Header: Added height constraint to the inner chat box.
+          className={`relative bg-backgroundCard border border-gray-300 rounded-none sm:rounded-3xl shadow-2xl w-full max-w-full lg:max-w-4xl xl:max-w-5xl flex flex-col transition-all duration-300 text-textDark h-[90vh] max-h-[90vh]`}
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.8, opacity: 0 }}
@@ -400,6 +478,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></div>
                   <span className="text-green-600 font-medium text-xs">
+                    {/* Reverted to Hindi */}
                     {voiceSupported ? 'वॉयस रेडी 🎤' : 'केवल टेक्स्ट 📝'}
                   </span>
                 </div>
@@ -415,6 +494,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
                   transition={{ duration: 1, repeat: Infinity }}
                 >
                   <Volume2 className="w-4 h-4 text-red-600" />
+                  {/* Reverted to Hindi */}
                   <span className="text-red-600 text-sm">बोलना रोकें</span>
                 </motion.button>
               )}
@@ -461,11 +541,14 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
                       <div className="flex items-center justify-between mb-1 sm:mb-2">
                         <div className="flex items-center space-x-2">
                           {message.type === 'user' ? (
+                            // Reverted to Hindi
                             <span className="text-sm font-medium">आप</span>
                           ) : (
+                            // Reverted to Hindi
                             <span className="text-sm font-medium text-textDark">🤖 डिजिटल साथी</span>
                           )}
                           {message.isVoice && (
+                            // Reverted to Hindi
                             <span className="text-xs bg-black/10 px-2 py-1 rounded-full text-white">🎤 वॉयस</span>
                           )}
                         </div>
@@ -475,6 +558,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
                             className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded-full transition-colors flex items-center space-x-1 text-primary-600"
                           >
                             <Volume2 className="w-3 h-3" />
+                            {/* Reverted to Hindi */}
                             <span>सुनें</span>
                           </button>
                         )}
@@ -483,7 +567,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
                       <p className={`text-xs mt-2 ${
                         message.type === 'user' ? 'text-white/80' : 'text-textMuted'
                       }`}>
-                        {/* समय प्रारूप हिंदी या अंग्रेजी पर आधारित है */}
+                        {/* Reverted to Hindi */}
                         {message.timestamp.toLocaleTimeString(detectContentLanguage(message.content), {
                           hour: '2-digit',
                           minute: '2-digit'
@@ -498,10 +582,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
               {/* Quick Actions */}
               <div className="px-4 sm:px-6 flex-shrink-0 border-t border-gray-200 pt-2 bg-backgroundCard">
                 <div className="flex items-center justify-between mb-3">
+                  {/* Reverted to Hindi */}
                   <p className="text-textMuted text-sm font-medium">त्वरित क्रियाएँ - एक क्लिक में:</p>
                   <motion.button 
                     onClick={() => setIsQuickActionsVisible(!isQuickActionsVisible)}
                     className="text-textDark p-1 rounded-full hover:bg-gray-100 transition-colors"
+                    // Reverted to Hindi
                     aria-label={isQuickActionsVisible ? "त्वरित क्रियाएँ छिपाएँ" : "त्वरित क्रियाएँ दिखाएँ"}
                   >
                     {isQuickActionsVisible ? (
@@ -589,6 +675,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    // Reverted to Hindi
                     placeholder={voiceSupported ? "बोलिए या यहाँ लिखें..." : "यहाँ लिखें..."}
                     className="flex-1 bg-transparent text-textDark placeholder-textMuted focus:outline-none text-sm sm:text-base"
                   />
@@ -631,6 +718,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
 
                 {!voiceSupported && (
                   <div className="text-center mt-2">
+                    {/* Reverted to Hindi */}
                     <p className="text-accentSecondary-600 text-sm">
                       ⚠️ वॉयस फीचर के लिए Chrome, Firefox, या Edge जैसे ब्राउज़र का उपयोग करें।
                     </p>

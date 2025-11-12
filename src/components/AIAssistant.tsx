@@ -61,7 +61,7 @@ const detectContentLanguage = (text: string): string => {
   return 'en-US'; // Default to English
 };
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = 'http://localhost:5000';
 
 const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState<Message[]>([]);

@@ -4,7 +4,6 @@ import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import path from "path";
 import express from "express";
-import bodyParser from "body-parser";
 import cors from "cors";
 import mongoose from "mongoose";
 import axios from "axios"; 
@@ -19,9 +18,8 @@ import Service from "./models/Service.js";
 import Conversation from "./models/Conversation.js";
 import Message from "./models/Message.js";
 
-// --- START NEW LANGUAGE DETECTION DEPENDENCIES (Requires npm i cld3-asm franc langs) ---
-import { load as loadCLD3 } from "cld3-asm";
-import franc from "franc";
+// --- START NEW LANGUAGE DETECTION DEPENDENCIES (Requires npm i franc langs) ---
+import { franc } from "franc"; // FIXED: Use named import for ES Module interop
 import langs from "langs";
 // --- END NEW LANGUAGE DETECTION DEPENDENCIES ---
 
@@ -37,7 +35,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json()); // FIXED: Using integrated Express JSON parser
 
 // --- Database Connection ---
 const MONGO_URI = process.env.MONGO_URI;
@@ -79,7 +77,7 @@ const toolDefinitions = [
 }));
 
 
-// --- START Enhanced Language Detection (CLD3 + Heuristics) ---
+// --- START Enhanced Language Detection (Heuristics + Franc) ---
 
 // BCP-47 mapping for India's 22 scheduled languages + a few common variants.
 const SUPPORTED_LANGS = {
@@ -167,16 +165,10 @@ const SCRIPT = {
 // tiny letter-set to spot Sindhi inside Arabic range
 const SINDHI_UNIQUES = /[ٻ ٽ ڄ ڏ ڃ ڦ ڪ ڳ ڱ ءٔ]/; 
 
-let cld3 = null;
-async function ensureCLD3() {
-  if (!cld3) cld3 = await loadCLD3();
-  return cld3;
-}
-
 /**
  * Returns BCP-47 tag for language override detection
  */
-function resolveLanguageOverride(text = "") {
+export function resolveLanguageOverride(text = "") { // FIXED: Exported function
   const t = (text || "").trim();
 
   // 1) English patterns: "in marathi", "reply in tamil", "answer in punjabi"
@@ -219,19 +211,7 @@ export async function detectLanguageEnhanced(text = "") {
   const trimmed = String(text).trim();
   if (!trimmed) return SUPPORTED_LANGS.en;
 
-  // 1) Try CLD3 first
-  try {
-    await ensureCLD3();
-    const guess = cld3.findLanguage(trimmed); 
-    if (guess && guess.language && guess.probability >= 0.7) {
-      const iso = guess.language; 
-      if (SUPPORTED_LANGS[iso]) return SUPPORTED_LANGS[iso];
-    }
-  } catch (e) {
-    // fall through
-  }
-
-  // 2) Try franc as a secondary guess
+  // 1) Try franc 
   try {
     const francIso3 = franc(trimmed, { minLength: 6 }); 
     if (francIso3 && francIso3 !== "und") {
@@ -245,7 +225,7 @@ export async function detectLanguageEnhanced(text = "") {
     // fall through
   }
 
-  // 3) Script fallback 
+  // 2) Script fallback 
   if (SCRIPT.MEETEI_MAYEK.test(trimmed)) return SUPPORTED_LANGS.mni;
   if (SCRIPT.OL_CHIKI.test(trimmed)) return SUPPORTED_LANGS.sat;
   if (SCRIPT.TAMIL.test(trimmed)) return SUPPORTED_LANGS.ta;
@@ -277,7 +257,7 @@ export async function detectLanguageEnhanced(text = "") {
   // Default: Treat Roman script input as English by default
   return SUPPORTED_LANGS.en;
 }
-// --- END Enhanced Language Detection (CLD3 + Heuristics) ---
+// --- END Enhanced Language Detection (Heuristics + Franc) ---
 
 
 // --- Helper for Second Pass Language Enforcement ---
@@ -455,14 +435,13 @@ Keep answers accurate, concise, and in the native script of ${targetName}.`;
  */
 async function performGoogleSearch(query) {
     try {
-        const searchResults = await google.search({ queries: [query] });
-        
-        if (searchResults.results && searchResults.results.length > 0) {
-            const topResult = searchResults.results[0];
-            let snippet = topResult.snippet || topResult.title;
-
-            return `\n\n🔎 **Real-time Search Result**: ${snippet} (Source: ${topResult.source_title || topResult.source})`;
-        }
+        // NOTE: Google Search Tool is not callable in this environment, this remains placeholder logic.
+        // const searchResults = await google.search({ queries: [query] });
+        // if (searchResults.results && searchResults.results.length > 0) {
+        //     const topResult = searchResults.results[0];
+        //     let snippet = topResult.snippet || topResult.title;
+        //     return `\n\n🔎 **Real-time Search Result**: ${snippet} (Source: ${topResult.source_title || topResult.source})`;
+        // }
         return "";
     } catch (error) {
         console.error("❌ Google Search Fallback failed:", error);
@@ -615,8 +594,8 @@ app.post("/api/chat", async (req, res) => {
             const isGeneralQuery = !isToolQuery; 
             
             if (isGeneralQuery) {
-                searchAppend = await performGoogleSearch(userMessage);
-                finalAIResponse = aiResponse + searchAppend;
+                // NOTE: Google Search Tool is not callable in this environment, but the logic remains.
+                finalAIResponse = aiResponse;
             } else {
                 finalAIResponse = aiResponse;
             }
@@ -635,9 +614,9 @@ app.post("/api/chat", async (req, res) => {
                 Hindi: "क्षमस्व! AI मॉडल की प्रोग्रामिंग में फिलहाल हिंदी और अंग्रेजी का प्राथमिकता है। कृपया अपना प्रश्न पुनः पूछें, मैं उत्तर देने का पूरा प्रयास करूँगा।",
                 Marathi: "क्षमस्व! AI मॉडेलच्या प्रोग्रामिंगमध्ये सध्या फक्त हिंदी आणि इंग्रजीलाच प्राधान्य आहे। कृपया तुमचा प्रश्न पुन्हा विचारा, मी उत्तर देण्याचा पूर्ण प्रयत्न करेन।",
                 Tamil: "மன்னிக்கவும்! AI மாதிரியின் புரோகிராமிங்கில் தற்போது இந்தி மற்றும் ஆங்கிலத்திற்கு மட்டுமே முன்னுரிமை உள்ளது. உங்கள் கேள்வியை மீண்டும் கேட்கவும், பதிலளிக்க நான் முழு முயற்சி செய்வேன்.",
-                Kannada: "ಕ್ಷಮಿಸಿ! AI ಮಾದರಿಯ ಪ್ರೋಗ್ರಾಮಿಂಗ್‌ನಲ್ಲಿ ಸದ್ಯಕ್ಕೆ ಹಿಂದಿ ಮತ್ತು ಇಂಗ್ಲಿಷ್‌ಗೆ ಮಾತ್ರ ಆದ್ಯತೆ ಇದೆ. ದಯವಿಟ್ಟು ನಿಮ್ಮ ಪ್ರಶ್ನೆಯನ್ನು ಮತ್ತೆ ಕೇಳಿ, ನಾನು ಉತ್ತರಿಸಲು ಪೂರ್ಣ ಪ್ರಯತ್ನ ಮಾಡುತ್ತೇನೆ.",
+                Kannada: "ಕ್ಷಮಿಸಿ! AI ಮಾದರಿಯ ಪ್ರೋಗ್ರಾಮಿಂಗ್‌ನಲ್ಲಿ ಸದ್ಯಕ್ಕೆ ಹಿಂದಿ ಮತ್ತು ಇಂಗ್ಲಿಷ್‌ಗೆ ಮಾತ್ರ ಆದ್ಯತೆ ಇದೆ. ದಯವಿಟ್ಟು ನಿಮ್ಮ ಪ್ರಶ್ನೆಯನ್ನು ಮತ್ತೆ ಕೇಳಿ, ನಾನು ಉತ್ತರಿಸಲು ಪೂರ್ಣ ಪ್ರಯತ್ನ ಮಾಡುತ್ತೇನೆ।",
                 Bengali: "দুঃখিত! এআই মডেলের প্রোগ্রামিংয়ে বর্তমানে হিন্দি এবং ইংরেজিকে অগ্রাধিকার দেওয়া হয়েছে। অনুগ্রহ করে আপনার প্রশ্নটি আবার জিজ্ঞাসা করুন, আমি উত্তর দেওয়ার জন্য যথাসাধ্য চেষ্টা করব।",
-                Punjabi: "ਮਾਫ਼ ਕਰਨਾ! AI ਮਾਡਲ ਦੀ ਪ੍ਰੋਗਰਾମਿੰਗ ਵਿੱਚ ਵਰਤମਾਨ ਵਿੱਚ ਹਿੰਦੀ ਅਤੇ ਅੰਗਰੇਜ਼ੀ ਨੂੰ ਤਰਜੀਹ ਦਿੱਤੀ ਗਈ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਆਪਣਾ ਸਵਾਲ ਦੁਬਾਰਾ ਪੁੱਛੋ, ਮੈਂ ਜਵਾਬ ਦੇਣ ਦੀ ਪੂਰੀ ਕੋਸ਼ିਸ਼ ਕਰਾਂਗਾ।",
+                Punjabi: "ਮਾਫ਼ ਕਰਨਾ! AI ਮਾਡਲ ਦੀ ਪ੍ਰੋਗਰਾਮਿੰਗ ਵਿੱਚ ਵਰਤਮਾਨ ਵਿੱਚ ਹਿੰਦੀ ਅਤੇ ਅੰਗਰੇਜ਼ੀ ਨੂੰ ਤਰਜੀਹ ਦਿੱਤੀ ਗਈ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਆਪਣਾ ਸਵਾਲ ਦੁਬਾਰਾ ਪੁੱਛੋ, ਮੈਂ ਜਵਾਬ ਦੇਣ ਦੀ ਪੂਰੀ ਕੋਸ਼ਿਸ਼ ਕਰਾਂਗਾ।",
                 Odia: "ଦୁଃଖିତ! AI ମଡେଲର ପ୍ରୋଗ୍ରାମିଂରେ ବର୍ତ୍ତମାନ ହିନ୍ଦୀ ଏବଂ ଇଂରାଜୀକୁ ପ୍ରାଧାନ୍ୟ ଦିଆଯାଇଛି। ଦୟାକରି ଆପଣଙ୍କ ପ୍ରଶ୍ନ ପୁନର୍ବାର ପଚାରନ୍ତୁ, ମୁଁ ଉତ୍ତର ଦେବାକୁ ପୂରା ଚେଷ୍ଟା କରିବି।",
                 Urdu: "معذرت! AI ماڈل کی پروگرامنگ میں فی الحال ہندی اور انگریزی کو ترجیح دی گئی ہے۔ براہ کرم اپنا سوال دوبارہ پوچھیں، میں جواب دینے کی پوری کوشش کروں گا۔",
                 English: "I apologize, but the AI model's internal constraints currently prioritize Hindi and English. Please rephrase your query, and I will try my best to answer it.",

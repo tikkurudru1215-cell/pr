@@ -29,11 +29,6 @@ export interface AnalyticsData {
   totalComplaints: number;
   resolvedComplaints: number;
   pendingComplaints: number;
-  sentimentBreakdown: {
-    positive: number;
-    negative: number;
-    neutral: number;
-  };
   categoryBreakdown: Record<ServiceCategory, number>;
   priorityBreakdown: {
     low: number;
@@ -48,9 +43,19 @@ export interface AnalyticsData {
   }>;
 }
 
+// Added type definition for AI Insights
+export interface PredictiveInsight {
+  title: string;
+  type: 'warning' | 'info' | 'success';
+  content: string;
+}
+
 export interface District {
   name: string;
   coordinates: [number, number];
   complaints: number;
   avgSentiment: number;
 }
+
+// FIX: Add a dummy value export to satisfy Node.js ES Module named export requirement for type-only files.
+export const dummyExport = true;

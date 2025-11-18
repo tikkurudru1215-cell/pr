@@ -1,58 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Settings, Users, BarChart3, Bell, Shield, Database, Zap, Eye } from 'lucide-react';
-import { mockComplaints } from '../../data/mockData'; 
+import { Settings, Users, BarChart3, Bell, Shield, Database, Zap, Eye, AlertTriangle } from 'lucide-react';
 import { Complaint } from '../../types';
 import { format } from 'date-fns';
-
-// INTERFACE for the Tab objects 
-interface Tab {
-    id: string;
-    label: string;
-    icon: React.FC<any>; 
-}
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const AdminPanel: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState('overview');
-  // Initialize with empty array, let fetch populate it
+  // Initialize with an empty array. Data will be fetched live.
   const [complaints, setComplaints] = useState<Complaint[]>([]); 
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Defining the 'tabs' array 
-  const tabs: Tab[] = [ 
+  // --- Fetch Complaints Data on Mount ---
+  useEffect(() => {
+    const fetchComplaints = async () => {
+        try {
+            // Fetch all complaints from the new backend endpoint
+            const response = await axios.get<Complaint[]>(`${API_URL}/api/complaints`);
+            // Complaints should include both mock and live data from the backend merge
+            setComplaints(response.data); 
+            setError(null);
+        } catch (err) {
+            console.error("Failed to fetch complaints:", err);
+            setError('Failed to load complaints data. Please check the backend connection.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    fetchComplaints();
+  }, [selectedTab]); // Re-fetch if tab changes to 'complaints'
+
+  // ------------------------------------
+
+
+  const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'complaints', label: 'Manage Complaints', icon: Eye },
     { id: 'users', label: 'User Management', icon: Users },
     { id: 'settings', label: 'AI Settings', icon: Settings },
   ];
-
-  // --- Fetch Complaints on Tab Change ---
-  useEffect(() => {
-    // Only fetch complaints when the 'complaints' tab is selected
-    if (selectedTab === 'complaints') { 
-      const fetchComplaints = async () => {
-        setLoading(true);
-        try {
-          const response = await axios.get(`${API_URL}/api/admin/complaints`);
-          // Ensure ALL fetched complaints are set to state
-          setComplaints(response.data);
-        } catch (error) {
-          console.error("Failed to fetch complaints for Admin Panel:", error);
-          const { mockComplaints } = await import('../../data/mockData');
-          setComplaints(mockComplaints);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchComplaints();
-    }
-    // Set loading to false for tabs that don't fetch data (Overview, Users, Settings)
-    if (selectedTab !== 'complaints') {
-      setLoading(false);
-    }
-  }, [selectedTab]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -111,8 +100,8 @@ const AdminPanel: React.FC = () => {
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Active Users</p>
-              <p className="text-lg font-bold text-gray-900">2,847</p>
+              <p className="text-sm font-medium text-gray-600">Total Complaints</p>
+              <p className="text-lg font-bold text-gray-900">{complaints.length}</p> {/* Use actual count */}
             </div>
             <Users className="h-8 w-8 text-primary-600" />
           </div>
@@ -150,95 +139,95 @@ const AdminPanel: React.FC = () => {
     </div>
   );
 
-  const renderComplaints = () => {
-      if (loading) {
-          return (
-            <div className="text-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-              <p className="text-xl text-gray-700">Loading Complaints...</p>
-            </div>
-          );
-      }
-      return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Complaint Management ({complaints.length} Total Registered)</h3>
-              <div className="flex items-center space-x-2">
-                <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                  <option>All Status</option>
-                  <option>Pending</option>
-                  <option>In Progress</option>
-                  <option>Resolved</option>
-                </select>
-                <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                  <option>All Priority</option>
-                  <option>Urgent</option>
-                  <option>High</option>
-                  <option>Medium</option>
-                  <option>Low</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Complaint</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {/* Renders ALL complaints fetched from backend/mock */}
-                {complaints.map((complaint) => (
-                  <tr key={complaint.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{complaint.title}</p>
-                        <p className="text-sm text-gray-500 truncate max-w-xs">{complaint.description}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{complaint.userName}</td>
-                    <td className="px-6 py-4">
-                      <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
-                        {/* Assuming category property exists and matches ServiceCategory type */}
-                        {complaint.category.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(complaint.priority)}`}>
-                        {complaint.priority.charAt(0).toUpperCase() + complaint.priority.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(complaint.status)}`}>
-                        {complaint.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {format(new Date(complaint.timestamp), 'MMM d, yyyy')}
-                    </td>
-                    <td className="px-6 py-4">
-                      <button className="text-primary-600 hover:text-primary-900 text-sm font-medium">
-                        View Details
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+  const renderComplaints = () => (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">Complaint Management ({complaints.length} Total)</h3>
+          <div className="flex items-center space-x-2">
+            <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+              <option>All Status</option>
+              <option>Pending</option>
+              <option>In Progress</option>
+              <option>Resolved</option>
+            </select>
+            <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+              <option>All Priority</option>
+              <option>Urgent</option>
+              <option>High</option>
+              <option>Medium</option>
+              <option>Low</option>
+            </select>
           </div>
         </div>
-      );
-  };
-  
+      </div>
+      
+      {isLoading ? (
+        <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading complaints...</p>
+        </div>
+      ) : error ? (
+        <div className="text-center py-12 text-danger-600">
+            <AlertTriangle className="h-8 w-8 mx-auto mb-4" />
+            <p>{error}</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Complaint</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {complaints.map((complaint) => ( // Use fetched complaints
+                <tr key={complaint.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{complaint.title}</p>
+                      <p className="text-sm text-gray-500 truncate max-w-xs">{complaint.description}</p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{complaint.userName}</td>
+                  <td className="px-6 py-4">
+                    <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
+                      {complaint.category.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(complaint.priority)}`}>
+                      {complaint.priority.charAt(0).toUpperCase() + complaint.priority.slice(1)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(complaint.status)}`}>
+                      {complaint.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {format(new Date(complaint.timestamp), 'MMM d, yyyy')}
+                  </td>
+                  <td className="px-6 py-4">
+                    <button className="text-primary-600 hover:text-primary-900 text-sm font-medium">
+                      View Details
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+
   const renderUsers = () => (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200">
       <div className="p-6 border-b border-gray-200">
@@ -270,7 +259,7 @@ const AdminPanel: React.FC = () => {
 
   const renderSettings = () => (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">AI Model Configuration</h3>
         </div>
@@ -339,7 +328,7 @@ const AdminPanel: React.FC = () => {
       {/* Tab Navigation */}
       <div className="border-b border-gray-200">
         <nav className="flex space-x-8">
-          {tabs.map((tab: Tab) => { 
+          {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button

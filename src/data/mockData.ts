@@ -1,99 +1,94 @@
-import { Complaint, AnalyticsData, District, ServiceCategory } from '../types';
+import type { Complaint, AnalyticsData, District, ServiceCategory } from '../types/index.ts'; // FIX: Using 'import type'
 
-// Mock complaint data
+// Mock complaint data (UPDATED to Indian context)
 export const mockComplaints: Complaint[] = [
   {
     id: '1',
-    title: 'Frequent Power Outages in Sector 15',
+    title: 'Frequent Power Outages in Sector 15, Mumbai',
     description: 'We are experiencing daily power cuts for 4-6 hours. This is affecting our work and daily life significantly. Please look into this urgent matter.',
     category: 'electricity',
     location: {
-      district: 'Karachi Central',
-      coordinates: [24.8607, 67.0011]
+      district: 'Mumbai Central',
+      coordinates: [18.9667, 72.8333] // Mumbai Central
     },
     timestamp: new Date('2024-01-15'),
     sentiment: 'negative',
     priority: 'high',
     status: 'in-progress',
     userId: 'user1',
-    userName: 'Ahmed Ali'
+    userName: 'Akash Sharma' // Updated name
   },
   {
     id: '2',
-    title: 'Water Quality Issues in North Nazimabad',
+    title: 'Water Quality Issues in Bandra, Mumbai',
     description: 'The water supply has been contaminated for the past week. Many residents are falling sick. We need immediate action.',
     category: 'water',
     location: {
-      district: 'Karachi North',
-      coordinates: [24.9056, 67.0367]
+      district: 'Mumbai North',
+      coordinates: [19.0760, 72.8777] // Mumbai North
     },
     timestamp: new Date('2024-01-14'),
     sentiment: 'negative',
     priority: 'urgent',
     status: 'pending',
     userId: 'user2',
-    userName: 'Fatima Khan'
+    userName: 'Priya Singh' // Updated name
   },
   {
     id: '3',
-    title: 'Excellent Healthcare Service at DHQ Hospital',
-    description: 'I want to appreciate the excellent service provided by the medical staff at DHQ Hospital. They were very professional and caring.',
+    title: 'Excellent Healthcare Service at Victoria Hospital, Bengaluru',
+    description: 'I want to appreciate the excellent service provided by the medical staff at Victoria Hospital. They were very professional and caring.',
     category: 'healthcare',
     location: {
-      district: 'Lahore Central',
-      coordinates: [31.5204, 74.3587]
+      district: 'Bengaluru Central',
+      coordinates: [12.9716, 77.5946] // Bengaluru Central
     },
     timestamp: new Date('2024-01-13'),
     sentiment: 'positive',
     priority: 'low',
     status: 'resolved',
     userId: 'user3',
-    userName: 'Hassan Ahmed'
+    userName: 'Rohit Verma' // Updated name
   },
   {
     id: '4',
-    title: 'Damaged Roads Need Urgent Repair',
+    title: 'Damaged Roads in South Delhi Need Urgent Repair',
     description: 'The main road in our area has large potholes that are causing accidents. Several vehicles have been damaged already.',
     category: 'roads',
     location: {
-      district: 'Islamabad',
-      coordinates: [33.6844, 73.0479]
+      district: 'Delhi NCR',
+      coordinates: [28.7041, 77.1025] // Delhi
     },
     timestamp: new Date('2024-01-12'),
     sentiment: 'negative',
     priority: 'high',
     status: 'pending',
     userId: 'user4',
-    userName: 'Sadia Malik'
+    userName: 'Sneha Rao' // Updated name
   },
   {
     id: '5',
-    title: 'School Infrastructure Improvements Needed',
+    title: 'School Infrastructure Improvements Needed in Noida',
     description: 'Our local school needs better facilities including proper desks, clean washrooms, and library resources for students.',
     category: 'education',
     location: {
-      district: 'Rawalpindi',
-      coordinates: [33.5651, 73.0169]
+      district: 'Noida',
+      coordinates: [28.5355, 77.3910] // Noida
     },
     timestamp: new Date('2024-01-11'),
     sentiment: 'neutral',
     priority: 'medium',
     status: 'in-progress',
     userId: 'user5',
-    userName: 'Mohammad Tariq'
+    userName: 'Mohan Tariq' // Updated name
   }
 ];
 
-// Mock analytics data
+// Mock analytics data (RESTORED)
 export const mockAnalytics: AnalyticsData = {
   totalComplaints: 1247,
   resolvedComplaints: 892,
   pendingComplaints: 355,
-  sentimentBreakdown: {
-    positive: 186,
-    negative: 743,
-    neutral: 318
-  },
   categoryBreakdown: {
     electricity: 387,
     water: 298,
@@ -121,17 +116,18 @@ export const mockAnalytics: AnalyticsData = {
   ]
 };
 
-// Mock district data
+// Mock district data (UPDATED to Indian context)
 export const mockDistricts: District[] = [
-  { name: 'Karachi Central', coordinates: [24.8607, 67.0011], complaints: 324, avgSentiment: -0.4 },
-  { name: 'Karachi South', coordinates: [24.8608, 67.0104], complaints: 287, avgSentiment: -0.3 },
-  { name: 'Karachi North', coordinates: [24.9056, 67.0367], complaints: 198, avgSentiment: -0.5 },
-  { name: 'Lahore Central', coordinates: [31.5204, 74.3587], complaints: 156, avgSentiment: 0.1 },
-  { name: 'Lahore Cantt', coordinates: [31.5497, 74.3436], complaints: 134, avgSentiment: 0.0 },
-  { name: 'Islamabad', coordinates: [33.6844, 73.0479], complaints: 89, avgSentiment: 0.2 },
-  { name: 'Rawalpindi', coordinates: [33.5651, 73.0169], complaints: 67, avgSentiment: -0.1 }
+  { name: 'Mumbai Central', coordinates: [18.9667, 72.8333], complaints: 324, avgSentiment: -0.4 },
+  { name: 'Mumbai North', coordinates: [19.0760, 72.8777], complaints: 287, avgSentiment: -0.3 },
+  { name: 'Bengaluru West', coordinates: [12.9716, 77.5946], complaints: 198, avgSentiment: -0.5 },
+  { name: 'Chennai Central', coordinates: [13.0827, 80.2707], complaints: 156, avgSentiment: 0.1 },
+  { name: 'Hyderabad South', coordinates: [17.3850, 78.4867], complaints: 134, avgSentiment: 0.0 },
+  { name: 'Delhi NCR', coordinates: [28.7041, 77.1025], complaints: 89, avgSentiment: 0.2 },
+  { name: 'Noida', coordinates: [28.5355, 77.3910], complaints: 67, avgSentiment: -0.1 }
 ];
 
+// Keep colors as they are constants, not mock data
 export const categoryColors: Record<ServiceCategory, string> = {
   electricity: '#ef4444',
   water: '#3b82f6',

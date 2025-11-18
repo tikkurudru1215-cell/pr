@@ -1,4 +1,4 @@
-import { Complaint, ServiceCategory } from '../types';
+import type { Complaint, ServiceCategory, AnalyticsData, PredictiveInsight } from '../types/index.ts'; // FIX: Using 'import type'
 
 // Mock AI sentiment analysis
 export const analyzeSentiment = (text: string): 'positive' | 'negative' | 'neutral' => {
@@ -43,9 +43,65 @@ export const predictPriority = (text: string): 'low' | 'medium' | 'high' | 'urge
   return 'low';
 };
 
+// --- NEW: Logical AI Insight Function ---
+export const generatePredictiveInsights = (data: AnalyticsData): PredictiveInsight[] => {
+    
+    // 1. Calculate Highest Volume Category
+    const categories = Object.entries(data.categoryBreakdown).sort(([, a], [, b]) => b - a);
+    const mostComplainedCategory = categories.length > 0 ? categories[0][0] as ServiceCategory : 'other';
+
+    // 2. Identify highest Priority
+    const priorities = Object.entries(data.priorityBreakdown).sort(([, a], [, b]) => b - a);
+    const highestPriority = priorities.length > 0 ? priorities[0][0] : 'low';
+
+    // 3. Trend Analysis (Comparing last two months)
+    const lastMonth = data.monthlyTrends[data.monthlyTrends.length - 1];
+    const prevMonth = data.monthlyTrends[data.monthlyTrends.length - 2];
+    
+    let trendInsight: PredictiveInsight = { title: '💡 Trend Analysis', type: 'info', content: "Monthly volume is stable. Monitoring advised." };
+    if (prevMonth && lastMonth.complaints > prevMonth.complaints * 1.2) {
+        const percentIncrease = (((lastMonth.complaints - prevMonth.complaints) / prevMonth.complaints) * 100).toFixed(0);
+        trendInsight = { 
+            title: '📈 Volume Alert', 
+            type: 'warning', 
+            content: `Overall complaint volume spiked by ${percentIncrease}% last month. Systemic issues may be emerging.` 
+        };
+    } else if (prevMonth && lastMonth.resolved > prevMonth.resolved && lastMonth.complaints > lastMonth.resolved * 1.5) {
+        trendInsight = { 
+            type: 'warning', 
+            title: '⚠️ Bottleneck Warning', 
+            content: "Resolved cases increased, but complaints are rising much faster. There's a processing bottleneck."
+        };
+    }
+    
+    // 4. Predictive Insights List
+    return [
+        {
+            title: '⚡ Critical Focus Area',
+            type: highestPriority === 'urgent' ? 'warning' : 'info',
+            content: highestPriority !== 'low' 
+                ? `**${highestPriority.toUpperCase()}** priority complaints need immediate attention, focusing on ${getCategoryDisplayName(mostComplainedCategory)}.`
+                : 'No major urgency spikes detected recently.',
+        },
+        {
+            title: '📊 Highest Volume Forecast',
+            type: 'info',
+            content: `**${getCategoryDisplayName(mostComplainedCategory)}** has the highest volume (${categories[0][1] || 0} cases). This high volume trend is predicted to continue for the next quarter.`,
+        },
+        trendInsight,
+    ];
+};
+// --- END NEW: Logical AI Insight Function ---
+
+
 // Mock AI report generation
 export const generateSmartReport = (complaints: Complaint[]): string => {
   const totalComplaints = complaints.length;
+  // Fallback if no complaints exist
+  if (totalComplaints === 0) {
+    return "Report Generation Failed: No live complaint data is available in the system to analyze. Please ensure users have submitted complaints or check your MongoDB connection.";
+  }
+  
   const mostCommonCategory = getMostCommonCategory(complaints);
   const avgSentiment = getAverageSentiment(complaints);
   const urgentCount = complaints.filter(c => c.priority === 'urgent').length;
@@ -60,14 +116,14 @@ export const generateSmartReport = (complaints: Complaint[]): string => {
 • Urgent cases: ${urgentCount}
 
 🔍 Key Insights:
-• ${mostCommonCategory} services require immediate attention with the highest complaint volume
+• ${getCategoryDisplayName(mostCommonCategory)} services require immediate attention with the highest complaint volume.
 • ${urgentCount > 10 ? 'High number of urgent cases suggests systemic issues requiring priority focus' : 'Manageable number of urgent cases'}
-• Public sentiment indicates ${avgSentiment < -0.3 ? 'significant dissatisfaction' : avgSentiment > 0.3 ? 'general satisfaction' : 'mixed feelings'} with current services
+• Public sentiment is generally ${avgSentiment < -0.3 ? 'negative' : avgSentiment > 0.3 ? 'positive' : 'neutral'} with current services.
 
 💡 Recommendations:
-• Focus resources on improving ${getCategoryDisplayName(mostCommonCategory)} services
-• Implement proactive monitoring for urgent case categories
-• Consider public communication campaigns for transparency
+• Focus resources on improving ${getCategoryDisplayName(mostCommonCategory)} services.
+• Implement proactive monitoring for urgent case categories.
+• Consider public communication campaigns for transparency.
   `.trim();
 };
 
@@ -81,14 +137,17 @@ const getMostCommonCategory = (complaints: Complaint[]): ServiceCategory => {
     categoryCounts[complaint.category]++;
   });
   
-  return Object.entries(categoryCounts).reduce((a, b) => categoryCounts[a[0] as ServiceCategory] > categoryCounts[b[0] as ServiceCategory] ? a : b)[0] as ServiceCategory;
+  // Safely find the highest count or default to 'other'
+  const maxCategory = Object.entries(categoryCounts).reduce((a, b) => a[1] > b[1] ? a : b, ['', 0]);
+  return maxCategory[0] as ServiceCategory || 'other';
 };
 
 const getAverageSentiment = (complaints: Complaint[]): number => {
   const sentimentScores = complaints.map(c => 
     c.sentiment === 'positive' ? 1 : c.sentiment === 'negative' ? -1 : 0
   );
-  return sentimentScores.reduce((a, b) => a + b, 0) / sentimentScores.length;
+  // Correctly type the reducer to handle number and number
+  return (complaints.length > 0) ? (sentimentScores.reduce((a: number, b: number) => a + b, 0) / complaints.length) : 0;
 };
 
 const getCategoryDisplayName = (category: ServiceCategory): string => {

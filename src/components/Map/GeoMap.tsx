@@ -37,6 +37,7 @@ const GeoMap: React.FC = () => {
     <div className="space-y-8 animate-fade-in">
       <div className="text-center">
         <h2 className="text-3xl font-bold text-gray-900 mb-2">Geographic Analysis</h2>
+        {/* Updated description to explicitly mention Indian context */}
         <p className="text-gray-600">Complaint distribution and sentiment across Indian districts</p>
       </div>
 
@@ -76,7 +77,11 @@ const GeoMap: React.FC = () => {
             <span className="text-sm font-medium">Avg Complaints/District</span>
           </div>
           <p className="text-2xl font-bold text-gray-900 mt-2">
-            {Math.round(mockDistricts.reduce((acc, d) => acc + d.complaints, 0) / mockDistricts.length)}
+            {/* Handle case where mockDistricts is empty after replacement */}
+            {mockDistricts.length > 0 
+                ? Math.round(mockDistricts.reduce((acc, d) => acc + d.complaints, 0) / mockDistricts.length)
+                : 0
+            }
           </p>
         </div>
       </div>
@@ -89,7 +94,11 @@ const GeoMap: React.FC = () => {
         </div>
 
         <div className="h-[500px]">
-          <MapContainer center={[22.9734, 78.6569]} zoom={5.3} style={{ height: '100%', width: '100%' }}>
+          <MapContainer 
+            center={[22.9734, 78.6569]} // Centered on India (Madhya Pradesh)
+            zoom={5.3} 
+            style={{ height: '100%', width: '100%' }}
+          >
             <TileLayer
               url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
               attribution='&copy; <a href="https://carto.com/">CARTO</a>'
